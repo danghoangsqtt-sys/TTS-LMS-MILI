@@ -16,8 +16,9 @@
 
 ## 📖 Giới thiệu
 
-## MB-TTS (Military Broadcast Text-to-Speech)** 
-- là một phần mềm Desktop chuyên dụng được thiết kế cho các cơ quan, đơn vị cần sản xuất nội dung âm thanh/phát thanh với yêu cầu 
+## MB-TTS (Military Broadcast Text-to-Speech)
+
+- là một phần mềm Desktop chuyên dụng được thiết kế cho các cơ quan, đơn vị cần sản xuất nội dung âm thanh/phát thanh với yêu cầu
 
 ## BẢO MẬT TUYỆT ĐỐI.
 
@@ -37,7 +38,7 @@
 
 ## 📸 Giao diện Ứng dụng
 
--   > **Lưu ý:** Thêm ảnh chụp màn hình phần mềm của bạn vào thư mục `docs/images/` và cập nhật lại đường dẫn bên dưới.
+- > **Lưu ý:** Thêm ảnh chụp màn hình phần mềm của bạn vào thư mục `docs/images/` và cập nhật lại đường dẫn bên dưới.
 
 <details>
 <summary><b>1. Không gian Phòng thu (Studio)</b></summary>
