@@ -14,10 +14,9 @@ import { tmpdir } from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import ffmpeg from 'fluent-ffmpeg'
-import ffmpegStatic from 'ffmpeg-static'
-
-// Point fluent-ffmpeg to the bundled binary
-ffmpeg.setFfmpegPath(ffmpegStatic)
+// Point fluent-ffmpeg to the bundled binary in extraResources
+const ffmpegPath = join(getExtraResourcesPath(), 'ffmpeg.exe')
+ffmpeg.setFfmpegPath(ffmpegPath)
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -110,17 +109,34 @@ function piperSynthesize(text, piperExe, modelPath, lengthScale) {
       tmpdir(),
       `piper-chunk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.wav`
     )
+    console.log(`[Piper] Synthesizing: "${text.substring(0, 50)}..."`)
     const child = execFile(
       piperExe,
       ['--model', modelPath, '--length_scale', String(lengthScale), '--output_file', tempWav],
       { windowsHide: true, maxBuffer: 50 * 1024 * 1024 },
-      (error) => {
-        if (error) return reject(new Error(`Piper failed: ${error.message}`))
-        if (!existsSync(tempWav)) return reject(new Error('Piper produced no output'))
+      (error, stdout, stderr) => {
+        if (error) {
+          console.error(`[Piper] Error: ${error.message}`)
+          return reject(new Error(`Piper failed: ${error.message}`))
+        }
+        if (stderr && !stderr.includes('INFO') && !stderr.includes('DEBUG')) {
+          console.warn(`[Piper] Stderr: ${stderr}`)
+        }
+        if (!existsSync(tempWav)) {
+          console.error('[Piper] Output file not found')
+          return reject(new Error('Piper produced no output file'))
+        }
+        const stats = statSync(tempWav)
+        if (stats.size < 100) {
+          console.error(`[Piper] Output file too small: ${stats.size} bytes`)
+          return reject(new Error('Piper produced an empty or invalid audio file'))
+        }
+        console.log(`[Piper] Success: ${tempWav} (${stats.size} bytes)`)
         resolve(tempWav)
       }
     )
-    child.stdin.write(text)
+    // Piper needs a newline to trigger processing in some versions/modes
+    child.stdin.write(text + '\n')
     child.stdin.end()
   })
 }

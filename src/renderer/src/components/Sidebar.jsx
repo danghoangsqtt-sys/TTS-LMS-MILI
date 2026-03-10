@@ -20,7 +20,7 @@ const menuItems = [
   { id: 'lexicon', label: 'Từ Điển Viết Tắt', icon: BookOpenCheck },
   { id: 'library', label: 'Thư Viện Kịch Bản', icon: BookOpen },
   { id: 'voices', label: 'Quản Lý Giọng Đọc', icon: AudioLines },
-  { id: 'voicelab', label: 'Phòng Thí Nghiệm AI', icon: FlaskConical },
+  { id: 'voicelab', label: 'Clone Giọng AI', icon: FlaskConical },
   { id: 'history', label: 'Nhật Ký Hoạt Động', icon: Clock }
 ]
 
