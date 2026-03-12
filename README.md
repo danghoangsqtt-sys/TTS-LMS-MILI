@@ -1,94 +1,129 @@
-<div align="center">
-  <img src="build/icon.png" alt="MB-TTS Logo" width="120" />
+# 📡 SQTT.AI DESKTOP PRO - TRUNG TÂM ĐIỀU HÀNH PHÁT THANH AI
 
-  <h1>MB-TTS System</h1>
-  <p><strong>Hệ thống Phát thanh Trí tuệ Nhân tạo Nội bộ (Offline TTS)</strong></p>
-
-  <p>
-    <img src="https://img.shields.io/badge/Version-1.0.0-blue.svg" alt="Version" />
-    <img src="https://img.shields.io/badge/Electron-Desktop_App-47848F.svg?logo=electron" alt="Electron" />
-    <img src="https://img.shields.io/badge/React-UI_Framework-61DAFB.svg?logo=react" alt="React" />
-    <img src="https://img.shields.io/badge/Security-100%25_Offline-success.svg" alt="Offline" />
-  </p>
-</div>
+> **Bản quyền © 2026 DHSYSTEM.**  
+> _Hệ thống điều hành phát thanh kỹ thuật số thế hệ mới, tích hợp trí tuệ nhân tạo tối ưu cho môi trường độc lập và bảo mật._
 
 ---
 
-## 📖 Giới thiệu
+## 📖 Giới thiệu Tổng quan (Overview)
 
-## MB-TTS (Military Broadcast Text-to-Speech)
+**SQTT.AI DESKTOP PRO** là hệ thống phần mềm Desktop chuyên dụng, được thiết kế để chuẩn hóa và tự động hóa quy trình sản xuất nội dung âm thanh. Hệ thống tập trung vào khả năng chuyển đổi văn bản thành giọng nói (TTS) tiếng Việt với độ tự nhiên cao, hoạt động hoàn toàn **Offline**, đảm bảo an toàn thông tin tuyệt đối cho các đơn vị đặc thù.
 
-- là một phần mềm Desktop chuyên dụng được thiết kế cho các cơ quan, đơn vị cần sản xuất nội dung âm thanh/phát thanh với yêu cầu
-
-## BẢO MẬT TUYỆT ĐỐI.
-
-- Hệ thống hoạt động **100% Offline (Air-gapped)** không cần kết nối Internet, sử dụng lõi AI Piper và FFmpeg để biến văn bản thành giọng nói tự nhiên, kết hợp nhạc nền chuyên nghiệp ngang tầm các nền tảng Studio trực tuyến.
-
-## ✨ Tính năng Nổi bật
-
-- 🛡️ **Bảo mật tối đa (100% Offline):** Mọi quá trình xử lý AI và xuất file đều diễn ra trên máy tính cục bộ. Không có dữ liệu nào được gửi ra ngoài.
-- 🎙️ **Trình soạn thảo Đa giọng đọc:** Hỗ trợ chia đoạn văn bản (Blocks), cho phép thiết lập Giọng Nam, Giọng Nữ đan xen trong cùng một bản tin.
-- 🎛️ **Bộ trộn Âm thanh (Audio Mixer):** Tự động lồng ghép giọng đọc với Nhạc nền/Hành khúc. Điều chỉnh âm lượng độc lập và xuất ra file MP3/WAV hoàn chỉnh.
-- 📚 **Từ điển Thuật ngữ (Lexicon):** Tự động chuẩn hóa các từ viết tắt chuyên ngành quân sự/nhà nước (VD: "BQP" ➔ "Bộ Quốc phòng") giúp AI đọc chuẩn xác.
-- 💾 **Quản lý Kịch bản:** Lưu nháp các dự án đang thực hiện, dễ dàng chỉnh sửa và tái sử dụng.
-- 📥 **Nạp Model linh hoạt:** Quản lý kho giọng đọc nội bộ, cho phép import thêm các model giọng nói (`.onnx`) từ USB.
-- 🧪 **Phòng Thí nghiệm AI (Standby):** Giao diện sẵn sàng cho việc tích hợp module Huấn luyện giọng nói (Voice Cloning) khi có phần cứng GPU phù hợp.
+Sức mạnh của hệ thống nằm ở khả năng tối ưu hóa 100% hiệu suất CPU, cho phép vận hành mượt mà trên nhiều cấu hình phần cứng mà không cần GPU rời hay kết nối Internet.
 
 ---
 
-## 📸 Giao diện Ứng dụng
+## ⚡ Tính năng Nổi bật (Key Features)
 
-- > **Lưu ý:** Thêm ảnh chụp màn hình phần mềm của bạn vào thư mục `docs/images/` và cập nhật lại đường dẫn bên dưới.
-
-<details>
-<summary><b>1. Không gian Phòng thu (Studio)</b></summary>
-<br>
-<img src="https://placehold.co/800x450/14452F/FFFFFF?text=Anh+Chup+Phong+Thu" alt="Phòng thu MB-TTS" />
-</details>
-
-<details>
-<summary><b>2. Bộ trộn Nhạc nền & Đa giọng đọc</b></summary>
-<br>
-<img src="https://placehold.co/800x450/14452F/FFFFFF?text=Anh+Chup+Bo+Tron" alt="Audio Mixer" />
-</details>
-
-<details>
-<summary><b>3. Quản lý Từ điển & Thuật ngữ</b></summary>
-<br>
-<img src="https://placehold.co/800x450/14452F/FFFFFF?text=Anh+Chup+Tu+Dien" alt="Từ điển" />
-</details>
+- **Offline AI Engine:** Tích hợp mô hình `VieNeu-TTS-0.3B-q4-gguf` siêu nhẹ, nạp trực tiếp vào RAM, phản hồi tức thì với độ trễ cực thấp.
+- **🎙️ Voice Cloning (Nhân bản Giọng nói):** Công nghệ Zero-shot tiên tiến giúp sao chép đặc trưng giọng nói chỉ với một file mẫu `.wav` và `.txt` tham chiếu.
+- **🎵 Auto Audio Mixing (Hòa trộn Âm thanh Tự động):** Tích hợp engine `pydub`, tự động lồng ghép nhạc nền từ thư mục `nhac_nen`, điều chỉnh cường độ âm thanh (Vocal/BGM) và xử lý vòng lặp thông minh.
+- **💾 Smart Workspace:** Quản lý luồng công việc theo dạng Dự án (Project-based). Người dùng toàn quyền chỉ định thư mục lưu trữ đầu ra, mang lại trải nghiệm chuyên nghiệp như bộ công cụ Microsoft Office.
+- **🎨 Military Dashboard UI:** Giao diện chỉ huy tối giản, hiện đại, tối ưu cho sự tập trung. Hệ thống được trang bị cơ chế **Error Boundary** giúp ngăn chặn hoàn toàn lỗi Crash đột ngột.
 
 ---
 
-## 🛠️ Công nghệ Sử dụng
+## 🏗️ Kiến trúc Hệ thống (Architecture)
 
-- **Frontend:** React.js, Tailwind CSS, Lucide Icons (Giao diện chuẩn Enterprise / Military).
-- **Backend/Desktop:** Electron, Node.js.
-- **Core AI:** [Piper TTS](https://github.com/rhasspy/piper) (Lõi Text-to-Speech tốc độ cao, tối ưu cho CPU).
-- **Audio Processing:** `fluent-ffmpeg` & `ffmpeg-static` (Xử lý, nối và mix nhạc nền).
+Hệ thống được xây dựng trên kiến trúc Hybrid hiện đại, tách biệt giữa giao diện điều khiển và lõi xử lý AI:
+
+1.  **Giao diện (Frontend):**
+    - Framework: **Electron** & **React**.
+    - Build Tool: **Vite**.
+    - Styling: **Tailwind CSS**.
+    - Đảm nhiệm: Quản lý UI/UX, tương tác người dùng và điều phối tiến trình.
+
+2.  **Lõi xử lý (Backend):**
+    - Ngôn ngữ: **Python 3.x**.
+    - API Framework: **FastAPI** & **Uvicorn**.
+    - AI Library: **Vieneu** (TTS Core).
+    - Audio Logic: **Pydub** & **FFmpeg**.
+
+3.  **Trình quản lý Tiến trình (Process Manager):**
+    - Cơ chế **Auto-spawn**: Frontend tự động khởi chạy Backend ngầm khi ứng dụng bắt đầu.
+    - Cơ chế **Auto-cleanup**: Tự động dọn dẹp tài nguyên và tắt tiến trình Python khi đóng ứng dụng để tối ưu RAM/CPU.
 
 ---
 
-## 🚀 Hướng dẫn Cài đặt & Phát triển
-
-### Yêu cầu hệ thống
-
-- Hệ điều hành: Windows 10/11 (64-bit).
-- Node.js (phiên bản 18.x trở lên).
-
-### Chạy ở môi trường Phát triển (Development)
+## 📂 Cấu trúc Thư mục Quan trọng (Project Structure)
 
 ```bash
-# 1. Clone repository
-git clone [https://github.com/your-username/mb-tts-system.git](https://github.com/your-username/mb-tts-system.git)
-cd mb-tts-system
+TTS-System/
+├── src/                # Toàn bộ mã nguồn React (Frontend)
+├── main/               # Mã nguồn khởi tạo Electron (Main Process)
+├── backend-dist/       # Lõi xử lý Python và môi trường máy chủ
+│   ├── mb_server.py    # File thực thi FastAPI Server chính
+│   ├── .venv/          # Môi trường ảo Python cô lập
+│   └── nhac_nen/       # Thư mục lưu trữ nhạc nền mặc định
+├── extraResources/     # Tài nguyên bổ sung (Models, Dictionary, FFmpeg)
+├── resources/          # Assets cố định (Icons, Splash screen)
+└── package.json        # Cấu hình dự án và scripts
+```
 
-# 2. Cài đặt các thư viện phụ thuộc
+---
+
+## 🛠️ Hướng dẫn dành cho Nhà phát triển (Development Guide)
+
+### Yêu cầu hệ thống:
+
+- Node.js (v18+)
+- Python (3.10+)
+
+### Bước 1: Khởi tạo Backend
+
+Di chuyển vào thư mục `backend-dist`, khởi tạo môi trường ảo và cài đặt các thư viện cần thiết:
+
+```powershell
+cd backend-dist
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install fastapi uvicorn vieneu pydub
+```
+
+### Bước 2: Khởi tạo Frontend
+
+Cài đặt các phụ kiện Node.js tại thư mục gốc:
+
+```bash
 npm install
+```
 
-# 3. Chuẩn bị thư mục lõi AI
-# Đảm bảo bạn đã có thư mục `extraResources` chứa piper.exe, ffmpeg và thư mục models, bgm.
+### Bước 3: Chạy môi trường Development
 
-# 4. Khởi chạy ứng dụng
+Khởi chạy ứng dụng ở chế độ lập trình (Hỗ trợ Hot Reload):
+
+```bash
 npm run dev
 ```
+
+---
+
+## 📦 Hướng dẫn Đóng gói (Build Production)
+
+Để tạo file cài đặt chính thức (`.exe`), sử dụng lệnh:
+
+```bash
+npm run build:win
+```
+
+> [!IMPORTANT]
+> **Cấu hình ExtraResources:**
+> Hệ thống đã được cấu hình trong `package.json` để tự động đóng gói toàn bộ thư mục `backend-dist` và `extraResources` vào file cài đặt. Điều này giúp ứng dụng có thể chạy độc lập ngay sau khi cài đặt mà không cần thiết lập thêm môi trường Python thủ công trên máy khách.
+
+---
+
+## 🚀 Hướng dẫn Sử dụng Nhanh (Quick Start)
+
+### 1. Thêm giọng đọc mới (Cloning)
+
+- Chuẩn bị 1 file âm thanh mẫu `.wav` (đã lọc nhiễu) và 1 file `.txt` tương ứng với nội dung trong file âm thanh.
+- Bỏ cả 2 file vào thư mục `/samples` để hệ thống nhận diện tự động trong mục **Voice Lab**.
+
+### 2. Thêm nhạc nền
+
+- Sao chép các file nhạc nền (`.mp3`, `.wav`) vào thư mục `nhac_nen/`.
+- Sử dụng tính năng **BGM Selector** trên bảng điều khiển để chọn và hòa trộn trực tiếp vào bản tin.
+
+---
+
+**DHSYSTEM - Kiến tạo nền tảng AI vững chắc.**

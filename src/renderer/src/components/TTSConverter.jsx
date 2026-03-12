@@ -2,136 +2,164 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Play,
-  Square,
-  Zap,
-  Download,
-  Cpu,
-  CheckCircle,
-  Volume2,
-  Headphones,
+  Trash2,
   Loader2,
+  FileText,
+  Microchip,
+  Volume2,
+  Zap,
+  Info,
   ChevronDown,
-  AlertCircle
+  Music,
+  Settings2,
+  AlertTriangle,
+  X,
+  Save,
+  CheckCircle2,
+  FolderOpen
 } from 'lucide-react'
 
-export default function TTSConverter({ onConversionComplete, externalText }) {
+// --- Prosody Modal Component ---
+function ProsodyModal({ isOpen, onClose, config, setConfig }) {
+  if (!isOpen) return null
+
+  const items = [
+    { id: 'dot', label: 'Dấu chấm (.)', symbol: '.', defaultVal: 0.5 },
+    { id: 'comma', label: 'Dấu phẩy (,)', symbol: ',', defaultVal: 0.2 },
+    { id: 'semicolon', label: 'Chấm phẩy (;)', symbol: ';', defaultVal: 0.3 },
+    { id: 'newline', label: 'Xuống dòng', symbol: '↵', defaultVal: 0.8 },
+  ]
+
+  return (
+    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+      <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
+        <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+                <Music className="text-emerald-600" size={20} />
+                <div>
+                   <h3 className="text-base font-bold text-gray-800">Tinh chỉnh Nhịp điệu</h3>
+                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Prosody Alignment Control</p>
+                </div>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">
+                <X size={20} />
+            </button>
+        </div>
+
+        <div className="p-8 space-y-8">
+            <div className="flex gap-2">
+                {['ĐỌC CHẬM', 'CHUẨN', 'ĐỌC NHANH'].map(m => (
+                    <button key={m} className="flex-1 py-2 text-[10px] font-bold border border-gray-100 rounded-xl text-gray-400 hover:border-emerald-200 hover:text-emerald-600 transition-all uppercase tracking-widest">
+                        {m}
+                    </button>
+                ))}
+            </div>
+
+            <div className="space-y-6">
+                {items.map(item => (
+                    <div key={item.id} className="space-y-3">
+                        <div className="flex justify-between items-center px-1">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center text-[10px] font-bold text-gray-400 border border-gray-100 italic">
+                                    {item.symbol}
+                                </div>
+                                <span className="text-xs font-bold text-gray-600">{item.label}</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">{config[item.id]}s</span>
+                        </div>
+                        <input 
+                            type="range"
+                            min="0.1"
+                            max="2.0"
+                            step="0.1"
+                            value={config[item.id]}
+                            onChange={(e) => setConfig({...config, [item.id]: parseFloat(e.target.value)})}
+                            className="w-full h-1.5 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                        />
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div className="p-6 bg-gray-50/50 flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3.5 rounded-2xl bg-white border border-gray-100 text-gray-500 text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-all">
+                Hủy bỏ
+            </button>
+            <button onClick={onClose} className="flex-1 py-3.5 rounded-2xl bg-emerald-600 text-white text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 hover:bg-emerald-700 transition-all">
+                <CheckCircle2 size={16} />
+                Lưu cấu hình
+            </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function TTSConverter({ 
+  onConversionComplete, 
+  externalText, 
+  cachedVoices = [], 
+  voicesLoading = false,
+  workspacePath = '',
+  prosodyConfig,
+  setProsodyConfig
+}) {
   // --- States ---
-  const [voices, setVoices] = useState([])
   const [selectedVoice, setSelectedVoice] = useState('')
   const [text, setText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [audioUrl, setAudioUrl] = useState(null)
+  const [successMsg, setSuccessMsg] = useState(null)
   const [errorMsg, setErrorMsg] = useState(null)
-  const [isPlaying, setIsPlaying] = useState(false)
+  const [activeFilter, setActiveFilter] = useState('NEWS')
+  
+  // Parametric States
+  const [speed, setSpeed] = useState(1.0)
+  const [pitch, setPitch] = useState(1.0)
+  const [bgmList, setBgmList] = useState([])
+  const [selectedBgm, setSelectedBgm] = useState('')
+  const [isProsodyOpen, setIsProsodyOpen] = useState(false)
 
-  // --- Refs for Visualization & Audio ---
-  const audioContextRef = useRef(null)
-  const analyserRef = useRef(null)
-  const canvasRef = useRef(null)
-  const animationRef = useRef(null)
-  const isPlayingRef = useRef(false)
+  // --- Refs ---
   const audioRef = useRef(null)
 
-  // --- Initialize: Fetch Voices ---
+  // --- Initialize Selection ---
   useEffect(() => {
-    const fetchVoices = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:8000/api/voices')
-        const data = await response.json()
-        if (data.success && data.voices) {
-          setVoices(data.voices)
-          if (data.voices.length > 0) {
-            setSelectedVoice(data.voices[0].id)
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch voices:', err)
-        setErrorMsg('Không thể kết nối đến máy chủ AI (127.0.0.1:8000)')
-      }
+    if (cachedVoices.length > 0 && !selectedVoice) {
+      setSelectedVoice(cachedVoices[0].id)
     }
-    fetchVoices()
+  }, [cachedVoices])
+
+  // --- Fetch BGM List ---
+  useEffect(() => {
+    const fetchBgm = async () => {
+        try {
+            const res = await fetch('http://127.0.0.1:8000/api/bgm')
+            const data = await res.json()
+            if (data.success) {
+                setBgmList(data.bgm || [])
+            }
+        } catch (e) {
+            console.error('Failed to fetch BGM:', e)
+        }
+    }
+    fetchBgm()
   }, [])
 
   // --- Handle External Text ---
   useEffect(() => {
-    if (externalText) {
-      setText(externalText)
-    }
+    if (externalText) setText(externalText)
   }, [externalText])
 
-  // --- Clean up URLs ---
-  useEffect(() => {
-    return () => {
-      if (audioUrl) URL.revokeObjectURL(audioUrl)
-    }
-  }, [audioUrl])
-
-  // --- Visualizer Logic ---
-  const drawVisualizer = () => {
-    if (!canvasRef.current || !analyserRef.current) return
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const bufferLength = analyserRef.current.frequencyBinCount
-    const dataArray = new Uint8Array(bufferLength)
-
-    const draw = () => {
-      if (!isPlayingRef.current) return
-      animationRef.current = requestAnimationFrame(draw)
-      analyserRef.current.getByteFrequencyData(dataArray)
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      const barWidth = (canvas.width / bufferLength) * 2.5
-      let barHeight
-      let x = 0
-
-      for (let i = 0; i < bufferLength; i++) {
-        barHeight = (dataArray[i] / 255) * canvas.height
-        const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0)
-        gradient.addColorStop(0, '#10b981') // emerald-500
-        gradient.addColorStop(1, '#6ee7b7') // emerald-300
-        ctx.fillStyle = gradient
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight)
-        x += barWidth + 1
-      }
-    }
-    draw()
-  }
-
-  // --- Audio Handlers ---
   const stopAudio = () => {
     if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
     }
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current)
-    }
-    isPlayingRef.current = false
-    setIsPlaying(false)
   }
 
-  const handlePlayPause = () => {
-    if (isPlaying) {
-      stopAudio()
-    } else if (audioRef.current) {
-      // Connect visualizer if first time
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)()
-        const ctx = audioContextRef.current
-        analyserRef.current = ctx.createAnalyser()
-        analyserRef.current.fftSize = 256
-        const source = ctx.createMediaElementSource(audioRef.current)
-        source.connect(analyserRef.current)
-        analyserRef.current.connect(ctx.destination)
-      }
-      
-      audioRef.current.play()
-      setIsPlaying(true)
-      isPlayingRef.current = true
-      drawVisualizer()
-    }
+  const handleOpenBgmFolder = () => {
+    window.api.openBgmFolder()
   }
 
   const handleSubmit = async (e) => {
@@ -140,6 +168,7 @@ export default function TTSConverter({ onConversionComplete, externalText }) {
 
     setIsLoading(true)
     setErrorMsg(null)
+    setSuccessMsg(null)
     stopAudio()
     if (audioUrl) URL.revokeObjectURL(audioUrl)
     setAudioUrl(null)
@@ -148,6 +177,15 @@ export default function TTSConverter({ onConversionComplete, externalText }) {
       const formData = new FormData()
       formData.append('voice_id', selectedVoice)
       formData.append('text', text)
+      formData.append('speed', speed)
+      formData.append('pitch', pitch)
+      formData.append('prosody', JSON.stringify(prosodyConfig))
+      if (selectedBgm) {
+        formData.append('bgm', selectedBgm)
+      }
+      if (workspacePath) {
+        formData.append('save_path', workspacePath)
+      }
 
       const response = await fetch('http://127.0.0.1:8000/api/tts', {
         method: 'POST',
@@ -155,200 +193,262 @@ export default function TTSConverter({ onConversionComplete, externalText }) {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.detail || 'Lỗi server khi tạo giọng nói')
+        const errorData = await response.json()
+        throw new Error(errorData.detail || 'Lỗi server AI')
       }
 
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
       setAudioUrl(url)
+      setSuccessMsg(`Đã tạo âm thanh thành công tại: ${workspacePath || 'Thư mục mặc định'}`)
 
       if (onConversionComplete) {
         onConversionComplete({
-          timestamp: Date.now(),
-          text: text,
-          voice: selectedVoice,
-          audioUrl: url
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          rawText: text,
+          configSummary: `${selectedVoice} (${speed}x${selectedBgm ? ' + BGM' : ''})`,
+          audioBlob: url
         })
       }
     } catch (err) {
       console.error('TTS Error:', err)
-      setErrorMsg(err.message || 'Không thể kết nối đến máy chủ AI')
+      setErrorMsg(err.message || 'Lỗi kết nối AI Core')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
-      {/* Header Info */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <Zap className="h-6 w-6 text-emerald-600" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-gray-800">Cộng tác viên Kỹ thuật số</h2>
-            <p className="text-sm text-gray-500">Chuyển văn bản thành giọng nói F5-TTS</p>
-          </div>
-        </div>
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full border border-emerald-100">
-          <CheckCircle className="h-4 w-4 text-emerald-600" />
-          <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">AI Engine Online</span>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Prosody Modal */}
+      <ProsodyModal 
+        isOpen={isProsodyOpen} 
+        onClose={() => setIsProsodyOpen(false)} 
+        config={prosodyConfig}
+        setConfig={setProsodyConfig}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Main Editor */}
-        <div className="md:col-span-8 space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
-            {/* Toolbar */}
-            <div className="px-4 py-3 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cấu hình</span>
-                <div className="relative group">
-                  <select
-                    value={selectedVoice}
-                    onChange={(e) => setSelectedVoice(e.target.value)}
-                    className="appearance-none bg-white border border-gray-200 rounded-lg px-3 py-1.5 pr-8 text-xs font-bold text-gray-700 focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer"
-                  >
-                    {voices.length === 0 && <option value="">Đang tải giọng nói...</option>}
-                    {voices.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        Voice: {v.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-              <span className="text-[10px] font-mono text-gray-400">{text.length} ký tự</span>
-            </div>
-
-            {/* Textarea */}
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Nhập nội dung văn bản bạn muốn chuyển đổi sang giọng nói tại đây..."
-              className="w-full min-h-[300px] p-6 text-gray-700 leading-relaxed outline-none resize-none placeholder-gray-300 font-medium"
-            />
-          </div>
-
-          {/* Action Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={isLoading || !text.trim() || !selectedVoice}
-            className="w-full py-4 bg-[#14452F] text-white rounded-xl font-bold shadow-lg hover:bg-emerald-800 disabled:opacity-50 disabled:hover:bg-[#14452F] active:scale-[0.99] transition flex items-center justify-center gap-3 group"
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Cpu className="h-5 w-5 group-hover:rotate-12 transition-transform" />
-            )}
-            {isLoading ? 'Đang hợp nhất dữ liệu âm thanh...' : 'Tạo giọng đọc ngay'}
-          </button>
-
-          {/* Error Message */}
-          {errorMsg && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-red-800">Lỗi không mong muốn</p>
-                <p className="text-xs text-red-600 mt-1">{errorMsg}</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Status & Player */}
-        <div className="md:col-span-4 space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm sticky top-6">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6 border-b border-gray-50 pb-3">Kết quả Audio</h3>
-            
-            {!audioUrl && !isLoading && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center mb-4">
-                  <Headphones className="h-8 w-8 text-gray-300" />
-                </div>
-                <p className="text-xs font-medium text-gray-400 leading-relaxed px-4">
-                  Chưa có audio được tạo. Nhấn nút &quot;Tạo giọng đọc&quot; để bắt đầu.
-                </p>
-              </div>
-            )}
-
-            {isLoading && (
-              <div className="space-y-4 py-8">
-                <div className="h-12 w-full bg-gray-50 rounded-lg animate-pulse" />
-                <div className="h-12 w-full bg-gray-50 rounded-lg animate-pulse delay-75" />
-                <p className="text-center text-[10px] font-bold text-emerald-600 uppercase animate-pulse">Processing GPU...</p>
-              </div>
-            )}
-
-            {audioUrl && (
-              <div className="space-y-6 animate-in zoom-in-95 duration-300">
-                <div className="h-32 bg-gray-900 rounded-xl overflow-hidden relative group">
-                  <canvas ref={canvasRef} width={400} height={128} className="w-full h-full opacity-80" />
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                    <button
-                      onClick={handlePlayPause}
-                      className="h-14 w-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xl transform group-hover:scale-110 transition active:scale-95"
-                    >
-                      {isPlaying ? <Square className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <Volume2 className="h-4 w-4 text-emerald-600" />
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase">Định dạng file</p>
-                      <p className="text-xs font-bold text-gray-700">WAV (Military Grade)</p>
+      {/* Main Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Left Column: Script Area */}
+        <div className="lg:col-span-12 xl:col-span-8 flex flex-col space-y-6">
+            <div className="pro-card-xl flex flex-col min-h-[520px] overflow-hidden">
+                <div className="p-6 pb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                            <FileText size={20} className="text-emerald-700" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-gray-800 tracking-tight leading-none">Kịch bản phát thanh</h3>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Input Script Processing</p>
+                        </div>
                     </div>
-                  </div>
-                  
-                  <a
-                    href={audioUrl}
-                    download={`TTS_${selectedVoice}_${Date.now()}.wav`}
-                    className="flex items-center justify-center gap-2 py-3 border-2 border-emerald-600 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-50 transition active:scale-[0.98]"
-                  >
-                    <Download className="h-4 w-4" /> Tải về máy (.wav)
-                  </a>
+                    
+                    <div className="flex items-center gap-2">
+                        {['NEWS', 'ALERT', 'STORY'].map(filter => (
+                            <button 
+                                key={filter}
+                                onClick={() => setActiveFilter(filter)}
+                                className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                                    activeFilter === filter 
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100 shadow-sm'
+                                        : 'text-gray-400 border-transparent hover:bg-gray-50'
+                                }`}
+                            >
+                                {filter}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <audio
-                  ref={audioRef}
-                  src={audioUrl}
-                  onEnded={() => {
-                    setIsPlaying(false)
-                    isPlayingRef.current = false
-                  }}
-                  className="hidden"
-                />
-              </div>
-            )}
-          </div>
+                <div className="px-8 py-4 flex-1">
+                    <textarea
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        placeholder="Nhập nội dung cần truyền tín hiệu..."
+                        className="w-full h-full text-base font-medium text-gray-700 placeholder:text-gray-300 border-none outline-none resize-none leading-relaxed custom-scrollbar min-h-[350px]"
+                    />
+                </div>
 
-          <div className="bg-emerald-950 rounded-2xl p-6 text-white shadow-xl shadow-emerald-950/20">
-            <h4 className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400/70 mb-4">
-              <Cpu className="h-3.5 w-3.5" /> AI Engine Insights
-            </h4>
-            <div className="space-y-3 font-mono text-[10px]">
-              <div className="flex justify-between border-b border-white/10 pb-2">
-                <span className="text-white/50">Model</span>
-                <span className="text-emerald-400 font-bold">F5-TTS v1.0</span>
-              </div>
-              <div className="flex justify-between border-b border-white/10 pb-2">
-                <span className="text-white/50">Reference</span>
-                <span className="text-emerald-400 font-bold">Zero-Shot Cloning</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/50">Output</span>
-                <span className="text-emerald-400 font-bold">24kHz PCM WAV</span>
-              </div>
+                <div className="p-6 bg-gray-50/20 border-t border-gray-50 flex justify-between items-center">
+                   <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-gray-400">
+                            <Zap size={14} className="text-blue-500" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">Normalize</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-400">
+                            <Info size={14} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest">{text.length} ký tự</span>
+                        </div>
+                    </div>
+                    <button onClick={() => setText('')} className="p-2.5 text-gray-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={18} />
+                    </button>
+                </div>
             </div>
-          </div>
+
+            {/* Error/Success Feedback Inline */}
+            {errorMsg && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 animate-in slide-in-from-left duration-300">
+                    <AlertTriangle className="text-red-500 flex-shrink-0" size={18} />
+                    <span className="text-xs font-bold text-red-700 uppercase tracking-tight">{errorMsg}</span>
+                    <button onClick={() => setErrorMsg(null)} className="ml-auto p-1.5 text-red-300 hover:text-red-500">
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
+
+            {successMsg && (
+                <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-4 animate-in slide-in-from-left duration-300">
+                    <CheckCircle2 className="text-emerald-500 flex-shrink-0" size={18} />
+                    <span className="text-xs font-bold text-emerald-700 uppercase tracking-tight">{successMsg}</span>
+                    <button onClick={() => setSuccessMsg(null)} className="ml-auto p-1.5 text-emerald-300 hover:text-emerald-500">
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
         </div>
+
+        {/* Right Column: Control Panel */}
+        <div className="lg:col-span-12 xl:col-span-4 flex flex-col space-y-6">
+            <div className="pro-card-xl p-8 space-y-8 flex flex-col min-h-[520px]">
+                
+                {/* Voice Selector */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                        <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.2em]">Giọng đọc (Phòng Ban)</label>
+                        <button className="text-[9px] font-bold text-emerald-600 hover:underline uppercase tracking-widest flex items-center gap-1.5">
+                            <Zap size={10} /> Làm mới
+                        </button>
+                    </div>
+
+                    {!voicesLoading && cachedVoices.length === 0 && (
+                         <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-3 mb-2 animate-in fade-in">
+                            <AlertTriangle className="text-amber-500 flex-shrink-0" size={16} />
+                            <p className="text-[10px] font-bold text-amber-700 leading-tight">Chưa có dữ liệu giọng nói. Sử dụng giọng mặc định.</p>
+                         </div>
+                    )}
+
+                    <div className="relative group">
+                        <select 
+                            value={selectedVoice}
+                            onChange={(e) => setSelectedVoice(e.target.value)}
+                            className="w-full bg-white border-2 border-emerald-50 rounded-2xl px-5 py-3.5 appearance-none text-[13px] font-bold text-gray-700 shadow-sm focus:outline-none focus:ring-4 focus:ring-emerald-50/50 transition-all cursor-pointer"
+                        >
+                            {cachedVoices.length > 0 ? (
+                                cachedVoices.map(v => (
+                                    <option key={v.id} value={v.id}>{v.name || v.id}</option>
+                                ))
+                            ) : (
+                                <option value="">Hệ thống Foundation Base</option>
+                            )}
+                        </select>
+                        <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" size={18} />
+                    </div>
+                </div>
+
+                {/* BGM Selector */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                        <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.2em]">Nhạc nền (Tùy chọn)</label>
+                        <button 
+                            onClick={handleOpenBgmFolder}
+                            className="text-[9px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1.5 uppercase transition-colors"
+                        >
+                            <FolderOpen size={12} /> Thư mục nhạc
+                        </button>
+                    </div>
+                    <div className="relative group">
+                        <select 
+                            value={selectedBgm}
+                            onChange={(e) => setSelectedBgm(e.target.value)}
+                            className="w-full bg-white border-2 border-gray-50 rounded-2xl px-5 py-3.5 appearance-none text-[13px] font-bold text-gray-700 shadow-sm focus:outline-none focus:border-emerald-100 transition-all cursor-pointer"
+                        >
+                            <option value="">-- Không sử dụng nhạc nền --</option>
+                            {bgmList.map(bgm => (
+                                <option key={bgm} value={bgm}>{bgm.replace(/\.(wav|mp3)$/, '')}</option>
+                            ))}
+                        </select>
+                        <Music className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-200" size={18} />
+                    </div>
+                </div>
+
+                {/* Sliders Grid */}
+                <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Tốc độ</span>
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md leading-none">{speed}x</span>
+                        </div>
+                        <input 
+                            type="range"
+                            min="0.5"
+                            max="2.0"
+                            step="0.1"
+                            value={speed}
+                            onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                            className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                        />
+                    </div>
+                    <div className="space-y-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                        <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none">Cao độ</span>
+                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md leading-none">{pitch}</span>
+                        </div>
+                        <input 
+                            type="range"
+                            min="0.5"
+                            max="1.5"
+                            step="0.1"
+                            value={pitch}
+                            onChange={(e) => setPitch(parseFloat(e.target.value))}
+                            className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                        />
+                    </div>
+                </div>
+
+                {/* Prosody Button */}
+                <button 
+                  onClick={() => setIsProsodyOpen(true)}
+                  className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 text-[11px] font-extrabold text-gray-400 hover:text-emerald-700 transition-all flex items-center justify-center gap-3"
+                >
+                    <Settings2 size={16} />
+                    Thiết lập Ngắt câu (Prosody)
+                </button>
+
+                {/* Sub-Footer Stats */}
+                <div className="pt-4 mt-auto border-t border-gray-50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Microchip className="text-gray-300" size={14} />
+                        <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">GGUF-Q4 Loaded</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                         <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Hệ thống Ổn định</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Execute Button */}
+            <button
+                onClick={handleSubmit}
+                disabled={isLoading || !text.trim() || !selectedVoice}
+                className="w-full py-6 rounded-[2rem] bg-[#0D6241] hover:bg-[#0B4D33] text-white flex flex-col items-center justify-center gap-1 transition-all shadow-2xl shadow-emerald-900/30 active:scale-95 disabled:opacity-40 disabled:grayscale group"
+            >
+                {isLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+                ) : (
+                    <div className="flex items-center gap-4">
+                        <Zap size={22} className="fill-white animate-pulse" />
+                        <span className="text-lg font-black uppercase tracking-widest italic">THỰC HIỆN CHUYỂN ĐỔI</span>
+                    </div>
+                )}
+                <span className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] group-hover:text-white/60">Execute Synthesis Signal</span>
+            </button>
+        </div>
+
       </div>
     </div>
   )

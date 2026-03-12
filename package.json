@@ -43,5 +43,19 @@
     "react-dom": "^19.2.1",
     "tailwindcss": "^3.4.19",
     "vite": "^7.2.6"
+  },
+  "build": {
+    "extraResources": [
+      {
+        "from": "backend-dist",
+        "to": "backend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    }
   }
 }

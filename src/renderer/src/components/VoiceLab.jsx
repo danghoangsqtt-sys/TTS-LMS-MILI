@@ -333,14 +333,14 @@ if __name__ == "__main__":
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-blue-900 flex items-center justify-center">
+            <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center">
               <Terminal className="h-4 w-4 text-white" />
             </div>
-            <h2 className="font-bold text-slate-800 uppercase tracking-tight">
-              Hướng Dẫn Cài Đặt Động Cơ Voice Bank (Chỉ làm 1 lần)
+            <h2 className="font-bold text-slate-800 uppercase tracking-tight text-xs">
+              Hướng Dẫn Cài Đặt Động Cơ Voice Bank
             </h2>
           </div>
-          <span className="text-[10px] bg-emerald-100 text-emerald-700 font-bold px-2 py-1 rounded-full uppercase">
+          <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-1 rounded-full uppercase border border-emerald-100">
             Yêu cầu card NVIDIA
           </span>
         </div>
@@ -354,12 +354,12 @@ if __name__ == "__main__":
               >
                 <div className="flex items-center gap-4">
                   <div
-                    className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors ${activeStep === step.id ? 'bg-blue-900 text-white shadow-md' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}
+                    className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors ${activeStep === step.id ? 'bg-[#10b981] text-white shadow-md' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}
                   >
                     {step.icon}
                   </div>
                   <h3
-                    className={`font-bold text-sm transition-colors ${activeStep === step.id ? 'text-blue-900' : 'text-slate-700'}`}
+                    className={`font-black uppercase tracking-wider text-[11px] transition-colors ${activeStep === step.id ? 'text-[#10b981]' : 'text-slate-700'}`}
                   >
                     {step.title}
                   </h3>
@@ -368,7 +368,7 @@ if __name__ == "__main__":
                   className={`transform transition-transform duration-200 ${activeStep === step.id ? 'rotate-180' : ''}`}
                 >
                   <svg
-                    className="h-5 w-5 text-slate-400"
+                    className={`h-5 w-5 ${activeStep === step.id ? 'text-[#10b981]' : 'text-slate-400'}`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -397,12 +397,12 @@ if __name__ == "__main__":
         {/* Form Section */}
         <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="h-10 w-10 rounded-lg bg-blue-900 flex items-center justify-center">
-              <FlaskConical className="h-6 w-6 text-white" />
+            <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center border border-slate-200 shadow-sm">
+              <FlaskConical className="h-6 w-6 text-[#10b981]" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-800 uppercase">Thêm Giọng Vào Ngân Hàng</h3>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">
+              <h3 className="font-black text-slate-800 uppercase text-xs tracking-wider">Thêm Giọng Vào Ngân Hàng</h3>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">
                 Military Standard Lab
               </p>
             </div>
@@ -411,8 +411,8 @@ if __name__ == "__main__":
           <div className="space-y-4">
             {/* Voice Name */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 uppercase flex items-center gap-2">
-                <CheckCircle className="h-3.5 w-3.5 text-blue-900" />
+              <label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest">
+                <CheckCircle className="h-3.5 w-3.5 text-[#10b981]" />
                 Tên Giọng Đọc
               </label>
               <input
@@ -420,14 +420,14 @@ if __name__ == "__main__":
                 placeholder="Ví dụ: Giọng Đồng chí A"
                 value={voiceName}
                 onChange={(e) => setVoiceName(e.target.value)}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-900/10 focus:border-blue-900 transition"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#10b981] focus:border-[#10b981] transition-all font-bold text-slate-700"
               />
             </div>
 
             {/* Audio File */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-700 uppercase flex items-center gap-2">
-                <Upload className="h-3.5 w-3.5 text-blue-900" />
+              <label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest">
+                <Upload className="h-3.5 w-3.5 text-[#10b981]" />
                 File Âm Thanh Mẫu
               </label>
               <div className="relative group">
@@ -438,15 +438,15 @@ if __name__ == "__main__":
                   className="absolute inset-0 opacity-0 cursor-pointer z-10"
                 />
                 <div
-                  className={`border-2 border-dashed rounded-lg p-6 text-center transition ${audioFile ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 group-hover:border-blue-900 group-hover:bg-slate-50'}`}
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-all ${audioFile ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 group-hover:border-[#10b981] group-hover:bg-slate-50'}`}
                 >
                   <Volume2
                     className={`h-8 w-8 mx-auto mb-2 ${audioFile ? 'text-emerald-500' : 'text-slate-300'}`}
                   />
-                  <p className="text-xs font-bold text-gray-700 truncate">
+                  <p className="text-xs font-black text-slate-800 truncate">
                     {audioFile ? audioFile.name : 'Nhấp hoặc kéo thả file .wav / .mp3'}
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1">Tối đa 10 giây. Âm thanh rõ nét.</p>
+                  <p className="text-[9px] text-slate-400 mt-1 uppercase font-black tracking-widest">Tối đa 10 giây. Âm thanh rõ nét.</p>
                 </div>
               </div>
             </div>
@@ -455,11 +455,11 @@ if __name__ == "__main__":
               <button
                 onClick={handleSaveVoice}
                 disabled={isLoading || !voiceName || !audioFile}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-sm uppercase transition shadow-md
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-md
                   ${
                     isLoading
-                      ? 'bg-blue-800 text-white cursor-wait'
-                      : 'bg-blue-900 text-white hover:bg-slate-800 active:scale-[0.98]'
+                      ? 'bg-slate-100 text-slate-400 cursor-wait'
+                      : 'bg-[#10b981] text-white hover:bg-[#059669] active:scale-[0.98]'
                   } disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed`}
               >
                 {isLoading ? (
@@ -477,7 +477,7 @@ if __name__ == "__main__":
 
               <button
                 onClick={resetForm}
-                className="px-4 py-3 border border-slate-200 rounded-lg text-gray-500 hover:bg-gray-50 hover:text-red-500 transition"
+                className="px-4 py-3 border border-slate-200 rounded text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -487,50 +487,50 @@ if __name__ == "__main__":
 
         {/* Status & Output Section */}
         <div className="space-y-6">
-          <div className="bg-slate-900 rounded-xl p-6 text-white shadow-xl min-h-[200px] flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                <Cpu className="h-4 w-4" />
+          <div className="bg-slate-900 rounded-xl p-6 text-white shadow-xl min-h-[200px] flex flex-col border border-slate-800">
+            <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-[#10b981]" />
                 System Terminal
               </h3>
-              <div className="flex gap-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+              <div className="flex gap-1.5 ">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
               </div>
             </div>
 
-            <div className="flex-1 font-mono text-xs space-y-2 text-slate-300">
-              <p className="text-emerald-400">$ system_status: IDLE</p>
+            <div className="flex-1 font-mono text-[11px] space-y-2 text-slate-300">
+              <p className="text-emerald-400/80">$ system_status: <span className="text-emerald-400 font-bold">IDLE</span></p>
               {isLoading && (
                 <p className="animate-pulse text-blue-400 italic">
                   [BUSY] Đang gửi file âm thanh gốc lên Ngân hàng Giọng nói...
                 </p>
               )}
               {error && <p className="text-red-400 font-bold">[ERROR] {error}</p>}
-              {successMsg && <p className="text-emerald-400">[SUCCESS] {successMsg}</p>}
+              {successMsg && <p className="text-emerald-400 font-bold">[SUCCESS] {successMsg}</p>}
               {!isLoading && !error && !successMsg && (
-                <p className="text-slate-500 italic">Sẵn sàng tiếp nhận yêu cầu từ phòng Lab.</p>
+                <p className="text-slate-500 italic opacity-60">Sẵn sàng tiếp nhận yêu cầu từ phòng Lab.</p>
               )}
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Info className="h-4 w-4 text-blue-900" />
-              <h4 className="text-xs font-bold text-blue-900 uppercase">Quy trình Lab</h4>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Info className="h-4 w-4 text-[#10b981]" />
+              <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Quy trình Lab</h4>
             </div>
-            <ul className="space-y-2">
-              <li className="flex gap-2 text-xs text-slate-600">
-                <span className="text-blue-900 font-bold">01.</span>
+            <ul className="space-y-3">
+              <li className="flex gap-3 text-[11px] text-slate-600 font-bold uppercase tracking-tight">
+                <span className="text-[#10b981] font-black">01.</span>
                 <span>Nhập tên định danh cho giọng nói để lưu vào hệ thống.</span>
               </li>
-              <li className="flex gap-2 text-xs text-slate-600">
-                <span className="text-blue-900 font-bold">02.</span>
+              <li className="flex gap-3 text-[11px] text-slate-600 font-bold uppercase tracking-tight">
+                <span className="text-[#10b981] font-black">02.</span>
                 <span>Cung cấp 5-10 giây âm thanh mẫu rõ lời, không nhạc nền.</span>
               </li>
-              <li className="flex gap-2 text-xs text-slate-600">
-                <span className="text-blue-900 font-bold">03.</span>
+              <li className="flex gap-3 text-[11px] text-slate-600 font-bold uppercase tracking-tight leading-relaxed">
+                <span className="text-[#10b981] font-black">03.</span>
                 <span>
                   Hệ thống sẽ lưu trữ đặc trưng âm học vào thư mục Voice Bank. Tất cả giọng sẽ tự
                   động xuất hiện ở tính năng Phát thanh.

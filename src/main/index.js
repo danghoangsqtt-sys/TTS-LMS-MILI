@@ -9,7 +9,7 @@ import {
   copyFileSync,
   statSync
 } from 'fs'
-import { execFile } from 'child_process'
+import { execFile, spawn, exec } from 'child_process'
 import { tmpdir } from 'os'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
@@ -228,89 +228,12 @@ function registerIpcHandlers() {
     return `data:audio/wav;base64,${wavBuffer.toString('base64')}`
   })
 
+  /* 
   // ----- Generate TTS (with smart chunking + custom pauses) -----
   ipcMain.handle('generate-tts', async (_event, { text, modelName, speed = 1.0 }) => {
-    const normalized = normalizeText(text)
-    const extraPath = getExtraResourcesPath()
-    const piperExe = join(extraPath, 'piper.exe')
-    const modelPath = join(extraPath, 'models', modelName)
-
-    if (!existsSync(piperExe)) throw new Error(`piper.exe not found at: ${piperExe}`)
-    if (!existsSync(modelPath)) throw new Error(`Model not found at: ${modelPath}`)
-
-    const lengthScale = parseFloat(speed) || 1.0
-
-    // Split text into chunks: sentences and pause tags
-    // This regex captures pause tags and splits on them, preserving sentence-like chunks
-    const pauseTagRegex = /(\[nghi_(\d+(?:\.\d+)?)s\])/g
-    const parts = normalized.split(pauseTagRegex)
-
-    // parts will be: [textBefore, fullTag, seconds, textAfter, fullTag, seconds, ...]
-    // Rebuild into ordered chunk descriptors
-    const chunks = []
-    let i = 0
-    while (i < parts.length) {
-      const part = parts[i]
-      if (part && part.match(/^\[nghi_[\d.]+s\]$/)) {
-        // This is a pause tag, next item is the captured seconds
-        const sec = parseFloat(parts[i + 1]) || 1.0
-        chunks.push({ type: 'pause', duration: sec })
-        i += 2
-      } else if (part && part.trim()) {
-        // Split long text into sentence-level sub-chunks to avoid overloading Piper
-        const sentences = part
-          .split(/(?<=[.!?。])\s+/)
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0)
-        for (const sentence of sentences) {
-          chunks.push({ type: 'text', content: sentence })
-        }
-        i += 1
-      } else {
-        i += 1
-      }
-    }
-
-    if (chunks.length === 0) {
-      throw new Error('No processable text found')
-    }
-
-    // Process each chunk into a WAV file
-    const chunkWavPaths = []
-    try {
-      for (const chunk of chunks) {
-        if (chunk.type === 'pause') {
-          const silPath = join(
-            tmpdir(),
-            `silence-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.wav`
-          )
-          generateSilenceWav(chunk.duration, silPath)
-          chunkWavPaths.push(silPath)
-        } else {
-          const wavPath = await piperSynthesize(chunk.content, piperExe, modelPath, lengthScale)
-          chunkWavPaths.push(wavPath)
-        }
-      }
-
-      // Concatenate all chunks
-      const finalWav = join(tmpdir(), `tts-final-${Date.now()}.wav`)
-      await concatWavFiles(chunkWavPaths, finalWav)
-
-      // Read and convert to base64
-      const wavBuffer = readFileSync(finalWav)
-      const base64 = wavBuffer.toString('base64')
-      const dataUri = `data:audio/wav;base64,${base64}`
-
-      // Cleanup
-      cleanupFiles(finalWav, ...chunkWavPaths)
-
-      return dataUri
-    } catch (err) {
-      // Cleanup on error
-      cleanupFiles(...chunkWavPaths)
-      throw err
-    }
+    // ... (Legacy Piper logic commented out)
   })
+  */
 
   // ----- Export Mixed Audio (TTS + BGM via FFmpeg) -----
   ipcMain.handle(
@@ -536,90 +459,12 @@ function registerIpcHandlers() {
     return { success: true }
   })
 
+  /*
   // ----- Generate Multi-Voice TTS (block-by-block, different models) -----
   ipcMain.handle('generate-multi-tts', async (_event, { blocks }) => {
-    const extraPath = getExtraResourcesPath()
-    const piperExe = join(extraPath, 'piper.exe')
-    if (!existsSync(piperExe)) throw new Error(`piper.exe not found at: ${piperExe}`)
-
-    const blockWavPaths = []
-    try {
-      for (const block of blocks) {
-        const normalizedText = normalizeText(block.text)
-        const modelPath = join(extraPath, 'models', block.voice)
-        if (!existsSync(modelPath)) throw new Error(`Model not found: ${block.voice}`)
-        const lengthScale = parseFloat(block.speed) || 1.0
-
-        // Split into sentences for this block
-        const pauseTagRegex = /(\[nghi_(\d+(?:\.\d+)?)s\])/g
-        const parts = normalizedText.split(pauseTagRegex)
-        const chunks = []
-        let pi = 0
-        while (pi < parts.length) {
-          const part = parts[pi]
-          if (part && part.match(/^\[nghi_[\d.]+s\]$/)) {
-            const sec = parseFloat(parts[pi + 1]) || 1.0
-            chunks.push({ type: 'pause', duration: sec })
-            pi += 2
-          } else if (part && part.trim()) {
-            const sentences = part
-              .split(/(?<=[.!?。])\s+/)
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0)
-            for (const sentence of sentences) {
-              chunks.push({ type: 'text', content: sentence })
-            }
-            pi += 1
-          } else {
-            pi += 1
-          }
-        }
-
-        // Process chunks for this block
-        const chunkWavs = []
-        for (const chunk of chunks) {
-          if (chunk.type === 'pause') {
-            const silPath = join(
-              tmpdir(),
-              `sil-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.wav`
-            )
-            generateSilenceWav(chunk.duration, silPath)
-            chunkWavs.push(silPath)
-          } else {
-            const wavPath = await piperSynthesize(chunk.content, piperExe, modelPath, lengthScale)
-            chunkWavs.push(wavPath)
-          }
-        }
-
-        if (chunkWavs.length === 0) continue
-
-        // Concatenate this block's chunks into one WAV
-        const blockWav = join(
-          tmpdir(),
-          `block-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.wav`
-        )
-        await concatWavFiles(chunkWavs, blockWav)
-        cleanupFiles(...chunkWavs)
-        blockWavPaths.push(blockWav)
-      }
-
-      if (blockWavPaths.length === 0) throw new Error('No audio blocks generated')
-
-      // Concatenate all block WAVs into final output
-      const finalWav = join(tmpdir(), `multi-tts-final-${Date.now()}.wav`)
-      await concatWavFiles(blockWavPaths, finalWav)
-
-      const wavBuffer = readFileSync(finalWav)
-      const base64 = wavBuffer.toString('base64')
-      const dataUri = `data:audio/wav;base64,${base64}`
-
-      cleanupFiles(finalWav, ...blockWavPaths)
-      return dataUri
-    } catch (err) {
-      cleanupFiles(...blockWavPaths)
-      throw err
-    }
+     // ... (Legacy Multi-Piper logic commented out)
   })
+  */
 
   // ----- Mock Voice Training -----
   ipcMain.handle('start-voice-training', async () => {
@@ -627,6 +472,131 @@ function registerIpcHandlers() {
     await new Promise((resolve) => setTimeout(resolve, 2000))
     return { success: false, message: 'GPU_NOT_FOUND' }
   })
+
+  // ----- Select Workspace Folder -----
+  ipcMain.handle('select-workspace', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Chọn Thư mục Làm việc (Workspace)',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    if (canceled) return null
+    return filePaths[0]
+  })
+
+  // ----- Open BGM Folder -----
+  ipcMain.handle('open-bgm-folder', async () => {
+    const isPackaged = app.isPackaged
+    const bgmPath = isPackaged
+      ? join(process.resourcesPath, 'backend', 'nhac_nen')
+      : join(app.getAppPath(), 'backend-dist', 'nhac_nen')
+
+    if (!existsSync(bgmPath)) {
+      try {
+        const { mkdirSync } = await import('fs')
+        mkdirSync(bgmPath, { recursive: true })
+      } catch (e) {
+        console.error('Failed to create BGM dir:', e)
+      }
+    }
+    shell.openPath(bgmPath)
+    return { success: true }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Portable Backend Manager (Python AI Engine)
+// ---------------------------------------------------------------------------
+
+let backendProcess = null
+const isPackaged = app.isPackaged
+const backendRoot = isPackaged
+  ? join(process.resourcesPath, 'backend')
+  : join(app.getAppPath(), 'backend-dist')
+
+const BACKEND_CONFIG = {
+  pythonExe: join(backendRoot, '.venv', 'Scripts', 'python.exe'),
+  backendDir: backendRoot,
+  script: 'mb_server.py'
+}
+
+function startBackend() {
+  console.log('--------------------------------------------------')
+  console.log('[Backend Manager] Initializing Python AI Engine...')
+  console.log(`[Backend Manager] Backend Path: ${BACKEND_CONFIG.backendDir}`)
+  console.log(`[Backend Manager] Python Exe: ${BACKEND_CONFIG.pythonExe}`)
+
+  try {
+    if (!existsSync(BACKEND_CONFIG.pythonExe)) {
+      console.error(
+        `[Backend Manager] CRITICAL: Python executable not found at ${BACKEND_CONFIG.pythonExe}`
+      )
+      return
+    }
+
+    const scriptPath = join(BACKEND_CONFIG.backendDir, BACKEND_CONFIG.script)
+    if (!existsSync(scriptPath)) {
+      console.error(`[Backend Manager] CRITICAL: Server script not found at ${scriptPath}`)
+      return
+    }
+
+    backendProcess = spawn(BACKEND_CONFIG.pythonExe, [BACKEND_CONFIG.script], {
+      cwd: BACKEND_CONFIG.backendDir,
+      env: {
+        ...process.env,
+        PYTHONPATH: join(BACKEND_CONFIG.backendDir, 'src'),
+        PYTHONIOENCODING: 'utf-8'
+      },
+      detached: false,
+      windowsHide: true,
+      shell: false
+    })
+
+    backendProcess.stdout.on('data', (data) => {
+      console.log(`[AI Server STDOUT] ${data.toString().trim()}`)
+    })
+
+    backendProcess.stderr.on('data', (data) => {
+      console.warn(`[AI Server STDERR] ${data.toString().trim()}`)
+    })
+
+    backendProcess.on('error', (err) => {
+      console.error(`[Backend Manager] Failed to start server: ${err.message}`)
+    })
+
+    backendProcess.on('close', (code) => {
+      console.log(`[Backend Manager] Server process exited with code ${code}`)
+      backendProcess = null
+    })
+
+    console.log(`[Backend Manager] Server spawned successfully (PID: ${backendProcess.pid})`)
+  } catch (err) {
+    console.error(`[Backend Manager] Exception while starting backend: ${err.message}`)
+  }
+}
+
+function stopBackend() {
+  if (backendProcess) {
+    console.log(`[Backend Manager] Terminating AI Engine (PID: ${backendProcess.pid})...`)
+    try {
+      // On Windows, taskkill /F /T /PID is the most reliable way to kill sub-processes (like Python workers)
+      const pid = backendProcess.pid
+      exec(`taskkill /F /T /PID ${pid}`, (err) => {
+        if (err) {
+          console.error(`[Backend Manager] Taskkill failed: ${err.message}`)
+          // Fallback to simple kill
+          if (backendProcess) backendProcess.kill()
+        } else {
+          console.log(`[Backend Manager] Process tree ${pid} terminated successfully.`)
+        }
+        backendProcess = null
+      })
+    } catch (err) {
+      console.error(`[Backend Manager] Error during shutdown: ${err.message}`)
+      if (backendProcess) backendProcess.kill()
+      backendProcess = null
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -642,6 +612,7 @@ app.whenReady().then(() => {
 
   registerIpcHandlers()
   createWindow()
+  startBackend()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -649,7 +620,12 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  stopBackend()
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('quit', () => {
+  stopBackend()
 })

@@ -15,11 +15,11 @@ import {
 } from 'lucide-react'
 
 const CATEGORIES = [
-  { id: 'POLITICS', label: 'Chính trị - Tư tưởng', icon: GraduationCap, color: 'text-red-600', bg: 'bg-red-50' },
-  { id: 'NEWS', label: 'Tin tức - Sự kiện', icon: Newspaper, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { id: 'ORDERS', label: 'Mệnh lệnh - Chỉ đạo', icon: Megaphone, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { id: 'STORY', label: 'Văn nghệ - Kể chuyện', icon: Music, color: 'text-purple-600', bg: 'bg-purple-50' },
-  { id: 'OTHER', label: 'Khác', icon: Tag, color: 'text-gray-600', bg: 'bg-gray-50' }
+  { id: 'POLITICS', label: 'Chính trị - Tư tưởng', icon: GraduationCap, color: 'text-red-500', bg: 'bg-red-500/10' },
+  { id: 'NEWS', label: 'Tin tức - Sự kiện', icon: Newspaper, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+  { id: 'ORDERS', label: 'Mệnh lệnh - Chỉ đạo', icon: Megaphone, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { id: 'STORY', label: 'Văn nghệ - Kể chuyện', icon: Music, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { id: 'OTHER', label: 'Khác', icon: Tag, color: 'text-gray-400', bg: 'bg-white/5' }
 ]
 
 // ─── IndexedDB helpers for local script storage ───────────────────────────────
@@ -86,10 +86,6 @@ export default function LectureLibrary({ onUseScript }) {
     category: 'POLITICS'
   })
 
-  useEffect(() => {
-    loadScripts()
-  }, [])
-
   const loadScripts = async () => {
     try {
       const data = await getAllScripts()
@@ -98,6 +94,10 @@ export default function LectureLibrary({ onUseScript }) {
       console.error('Failed to load scripts', e)
     }
   }
+
+  useEffect(() => {
+    loadScripts()
+  }, [])
 
   const filteredScripts = scripts.filter((s) => s.category === activeCategory)
 
@@ -136,33 +136,34 @@ export default function LectureLibrary({ onUseScript }) {
   }
 
   return (
-    <div className="flex h-full gap-6 animate-fade-in">
+    <div className="flex h-full gap-4 animate-in fade-in duration-300">
       {/* SIDEBAR CATEGORIES */}
-      <div className="w-64 bg-white rounded-2xl border border-gray-200 flex flex-col shadow-card overflow-hidden">
-        <div className="p-5 border-b border-gray-100">
-          <h3 className="text-gray-800 font-bold flex items-center gap-2 uppercase tracking-wide text-sm">
-            <BookOpen className="h-4 w-4 text-sqtt-primary" /> Danh mục
+      <div className="w-60 bg-white rounded border border-slate-200 flex flex-col overflow-hidden shadow-sm">
+        <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-slate-400 font-black flex items-center gap-2 uppercase tracking-[0.2em] text-[10px]">
+            <BookOpen className="h-3 w-3" /> Danh mục kịch bản
           </h3>
         </div>
-        <div className="p-3 space-y-1">
+        <div className="p-2 space-y-1">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon
+            const isActive = activeCategory === cat.id
             return (
               <button
                 key={cat.id}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
-                  activeCategory === cat.id
-                    ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100'
-                    : 'text-gray-600 hover:bg-gray-50'
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-[11px] font-black uppercase tracking-wider transition-all ${
+                  isActive
+                    ? 'bg-[#10b981] text-white shadow-md'
+                    : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
                 }`}
               >
-                <div className={`p-1.5 rounded-lg ${activeCategory === cat.id ? 'bg-white' : cat.bg}`}>
-                  <Icon className={`h-4 w-4 ${cat.color}`} />
+                <div className={`p-1 rounded ${isActive ? 'bg-white/20' : 'bg-slate-100'}`}>
+                  <Icon className={`h-3 w-3 ${isActive ? 'text-white' : cat.color}`} />
                 </div>
                 {cat.label}
-                <span className="ml-auto text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                  {scripts.filter((s) => s.category === cat.id).length}
+                <span className={`ml-auto text-[9px] font-black px-1.5 py-0.5 rounded ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                   {scripts.filter((s) => s.category === cat.id).length}
                 </span>
               </button>
             )
@@ -171,77 +172,76 @@ export default function LectureLibrary({ onUseScript }) {
       </div>
 
       {/* MAIN CONTENT GRID */}
-      <div className="flex-1 flex flex-col gap-6">
+      <div className="flex-1 flex flex-col gap-4">
         {/* Toolbar */}
-        <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200 shadow-card">
+        <div className="flex justify-between items-center bg-white p-4 rounded border border-slate-200 shadow-sm">
           <div>
-            <h2 className="font-bold text-lg text-gray-800">
+            <h2 className="font-black text-sm text-slate-800 uppercase tracking-[0.2em]">
               {CATEGORIES.find((c) => c.id === activeCategory)?.label}
             </h2>
-            <p className="text-xs text-gray-500 mt-1">Quản lý và sử dụng các kịch bản mẫu.</p>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5">Kho lưu trữ kịch bản vận hành</p>
           </div>
           <button
             onClick={() => handleOpenModal()}
-            className="bg-sqtt-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-emerald-700 transition shadow-lg shadow-emerald-500/20"
+            className="bg-[#10b981] hover:bg-[#059669] text-white px-5 py-2 rounded font-black text-[11px] uppercase tracking-[0.2em] flex items-center gap-2 transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
           >
-            <Plus className="h-5 w-5" /> Thêm bài mới
+            <Plus className="h-4 w-4" /> Thêm bài giảng
           </button>
         </div>
 
         {/* Grid */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {filteredScripts.length === 0 ? (
-            <div className="h-64 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
-              <BookOpen className="h-12 w-12 opacity-20 mb-3" />
-              <p className="font-medium">Chưa có bài giảng nào trong mục này.</p>
-              <button onClick={() => handleOpenModal()} className="mt-2 text-sqtt-primary hover:underline text-sm font-bold">
-                Tạo ngay
+            <div className="h-full flex flex-col items-center justify-center text-slate-300 border border-slate-200 border-dashed rounded bg-slate-50/50">
+              <BookOpen className="h-12 w-12 opacity-20 mb-4" />
+              <p className="font-black uppercase tracking-[0.2em] text-[10px]">Database Empty</p>
+              <button onClick={() => handleOpenModal()} className="mt-4 text-[#10b981] hover:underline text-[10px] font-black uppercase tracking-widest">
+                Khởi tạo ngay
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-4">
               {filteredScripts.map((script) => (
                 <div
                   key={script.id}
-                  className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition group flex flex-col hover:-translate-y-1 duration-200"
+                  className="bg-white rounded border border-slate-200 hover:border-[#10b981]/30 transition-all group flex flex-col shadow-sm hover:shadow-md"
                 >
-                  <div className="p-5 flex-1">
-                    <h4 className="font-bold text-gray-800 line-clamp-2 mb-2 h-12 leading-snug" title={script.title}>
+                  <div className="p-4 flex-1">
+                    <h4 className="font-black text-slate-800 uppercase tracking-tight line-clamp-2 mb-3 h-10 leading-snug text-[12px]" title={script.title}>
                       {script.title}
                     </h4>
-                    <div className="bg-gray-50 p-3 rounded-lg text-xs text-gray-600 font-medium line-clamp-4 h-24 mb-3 border border-gray-100">
+                    <div className="bg-slate-50 p-3 rounded text-[11px] text-slate-500 font-medium line-clamp-4 h-24 mb-3 border border-slate-100 uppercase leading-relaxed tracking-tight group-hover:text-slate-700 transition-colors">
                       {script.content}
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                    <div className="flex items-center gap-2 text-[9px] text-slate-300 font-black uppercase tracking-widest">
                       <Tag className="h-3 w-3" />
-                      <span>Sửa đổi: {new Date(script.lastModified).toLocaleDateString()}</span>
+                      <span>Sync: {new Date(script.lastModified).toLocaleDateString()}</span>
                     </div>
                   </div>
-                  <div className="bg-gray-50 border-t border-gray-100 p-3 flex justify-between items-center rounded-b-xl">
-                    <div className="flex gap-1">
+                  <div className="bg-slate-50/50 border-t border-slate-100 p-2 flex justify-between items-center">
+                    <div className="flex gap-0.5 opacity-40 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleOpenModal(script)}
-                        className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition"
-                        title="Sửa"
+                        className="text-slate-400 hover:text-[#10b981] p-2 hover:bg-white rounded transition-colors"
+                        title="Edit"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(script.id)}
-                        className="text-gray-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition"
-                        title="Xóa"
+                        className="text-slate-400 hover:text-red-500 p-2 hover:bg-white rounded transition-colors"
+                        title="Purge"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
 
-                    {/* ACTION BUTTON - LINK TO CONSOLE */}
                     <button
                       onClick={() => onUseScript(script.content)}
-                      className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 shadow-md shadow-emerald-500/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm"
+                      className="bg-white hover:bg-[#10b981] text-slate-400 hover:text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded flex items-center gap-2 transition-all border border-slate-200 hover:border-[#10b981] shadow-sm"
                     >
-                      <ArrowRightFromLine className="h-3.5 w-3.5" />
-                      Nạp vào Console
+                      <ArrowRightFromLine className="h-3 w-3" />
+                      Deploy
                     </button>
                   </div>
                 </div>
@@ -253,36 +253,36 @@ export default function LectureLibrary({ onUseScript }) {
 
       {/* MODAL EDITOR */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[600px]">
-            <div className="bg-white px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2 text-lg">
-                <Pencil className="h-5 w-5 text-sqtt-primary" />
-                {editingScript.id ? 'Chỉnh sửa Bài giảng' : 'Soạn thảo Bài giảng Mới'}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded border border-slate-200 shadow-2xl overflow-hidden flex flex-col h-[560px] animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-black text-slate-800 uppercase tracking-[0.2em] flex items-center gap-3 text-xs">
+                <Pencil className="h-4 w-4 text-[#10b981]" />
+                {editingScript.id ? 'HIỆU CHỈNH KỊCH BẢN' : 'KHỞI TẠO KỊCH BẢN MỚI'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-red-500 transition">
-                <X className="h-6 w-6" />
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-300 hover:text-slate-600 transition-colors">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="flex-1 p-6 flex flex-col gap-5 overflow-y-auto bg-gray-50/50">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Tiêu đề</label>
+            <div className="flex-1 p-6 flex flex-col gap-6 overflow-y-auto">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">Tiêu đề kịch bản</label>
                 <input
                   type="text"
                   value={editingScript.title}
                   onChange={(e) => setEditingScript((prev) => ({ ...prev, title: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-gray-800 bg-white shadow-sm"
-                  placeholder="VD: Chỉ thị 05 về Phòng chống bão lũ..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-[11px] focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none font-bold text-slate-700 placeholder:text-slate-300 uppercase tracking-wider transition-all"
+                  placeholder="VD: CHỈ THỊ VẬN HÀNH 05..."
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Danh mục</label>
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">Phân loại Protocol</label>
                 <select
                   value={editingScript.category}
                   onChange={(e) => setEditingScript((prev) => ({ ...prev, category: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-emerald-500 outline-none bg-white shadow-sm"
+                  className="w-full bg-slate-50 border border-slate-200 rounded p-3 text-[11px] focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none text-slate-700 font-bold uppercase tracking-widest transition-all"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -292,26 +292,26 @@ export default function LectureLibrary({ onUseScript }) {
                 </select>
               </div>
 
-              <div className="flex-1 flex flex-col">
-                <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Nội dung kịch bản</label>
+              <div className="flex-1 flex flex-col space-y-1.5">
+                <label className="block text-[10px] font-black text-slate-400 mb-1 uppercase tracking-widest">Nội dung dữ liệu</label>
                 <textarea
                   value={editingScript.content}
                   onChange={(e) => setEditingScript((prev) => ({ ...prev, content: e.target.value }))}
-                  className="flex-1 border border-gray-200 rounded-lg p-4 text-sm font-medium leading-relaxed focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none resize-none bg-white shadow-sm text-gray-700"
-                  placeholder="Nhập nội dung chi tiết..."
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded p-4 text-[12px] font-medium leading-relaxed focus:border-[#10b981] focus:ring-1 focus:ring-[#10b981] outline-none resize-none text-slate-700 uppercase tracking-tight scrollbar-thin transition-all"
+                  placeholder="BẮT ĐẦU NHẬP NỘI DUNG..."
                 />
               </div>
             </div>
 
-            <div className="bg-white px-6 py-4 border-t border-gray-100 flex justify-end gap-3">
-              <button onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg text-sm font-bold transition">
+            <div className="bg-slate-50/50 px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+              <button onClick={() => setIsModalOpen(false)} className="px-5 py-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded text-[10px] font-black uppercase tracking-widest transition-all">
                 Hủy bỏ
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-2.5 bg-sqtt-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-500/30 transition"
+                className="px-6 py-2 bg-[#10b981] hover:bg-[#059669] text-white rounded text-[10px] font-black flex items-center gap-2 transition-all active:scale-95 uppercase tracking-widest shadow-lg shadow-emerald-500/20"
               >
-                <Check className="h-4 w-4" /> Lưu lại
+                <Check className="h-4 w-4" /> Lưu cấu trúc
               </button>
             </div>
           </div>

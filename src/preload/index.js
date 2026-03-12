@@ -17,7 +17,9 @@ const api = {
   saveDraft: (draft) => ipcRenderer.invoke('save-draft', draft),
   deleteDraft: (id) => ipcRenderer.invoke('delete-draft', id),
   generateMultiTTS: (payload) => ipcRenderer.invoke('generate-multi-tts', payload),
-  previewWord: (payload) => ipcRenderer.invoke('preview-word', payload)
+  previewWord: (payload) => ipcRenderer.invoke('preview-word', payload),
+  selectWorkspace: () => ipcRenderer.invoke('select-workspace'),
+  openBgmFolder: () => ipcRenderer.invoke('open-bgm-folder')
 }
 
 if (process.contextIsolated) {

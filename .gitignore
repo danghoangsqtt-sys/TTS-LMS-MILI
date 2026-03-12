@@ -1,6 +1,32 @@
-node_modules
-dist
-out
+# =========================================
+# LÁ CHẮN GIT - DHSYSTEM DESKTOP PRO
+# =========================================
+
+# 1. Các thư mục nặng của Frontend (Node/Electron)
+node_modules/
+dist/
+out/
+release/
+.npm/
+
+# 2. Các thư mục siêu nặng của Backend (Python)
+backend-dist/.venv/
+backend-dist/model_cache/
+backend-dist/__pycache__/
+backend-dist/output_audio/
+
+# 3. Bỏ qua các tệp Media & Trọng số AI (Models)
+*.wav
+*.mp3
+*.flac
+*.pt
+*.gguf
+*.bin
+*.onnx
+
+# 4. Bỏ qua thư mục nhạc nền (chỉ giữ code, không giữ nhạc)
+nhac_nen/
+
+# 5. File cấu hình hệ điều hành (Rác hệ thống)
 .DS_Store
-.eslintcache
-*.log*
+Thumbs.db
