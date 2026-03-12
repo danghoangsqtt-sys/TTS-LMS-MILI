@@ -1,129 +1,113 @@
-# 📡 SQTT.AI DESKTOP PRO - TRUNG TÂM ĐIỀU HÀNH PHÁT THANH AI
+<p align="center">
+  <img src="assets/logo.png" width="180" alt="SQTT.AI Logo">
+</p>
 
-> **Bản quyền © 2026 DHSYSTEM.**  
-> _Hệ thống điều hành phát thanh kỹ thuật số thế hệ mới, tích hợp trí tuệ nhân tạo tối ưu cho môi trường độc lập và bảo mật._
+<h1 align="center">📡 SQTT.AI DESKTOP PRO</h1>
+<h3 align="center">TRUNG TÂM ĐIỀU HÀNH PHÁT THANH AI</h3>
 
----
+<p align="center">
+  <strong>Tác giả: DHSYSTEM</strong>
+</p>
 
-## 📖 Giới thiệu Tổng quan (Overview)
-
-**SQTT.AI DESKTOP PRO** là hệ thống phần mềm Desktop chuyên dụng, được thiết kế để chuẩn hóa và tự động hóa quy trình sản xuất nội dung âm thanh. Hệ thống tập trung vào khả năng chuyển đổi văn bản thành giọng nói (TTS) tiếng Việt với độ tự nhiên cao, hoạt động hoàn toàn **Offline**, đảm bảo an toàn thông tin tuyệt đối cho các đơn vị đặc thù.
-
-Sức mạnh của hệ thống nằm ở khả năng tối ưu hóa 100% hiệu suất CPU, cho phép vận hành mượt mà trên nhiều cấu hình phần cứng mà không cần GPU rời hay kết nối Internet.
-
----
-
-## ⚡ Tính năng Nổi bật (Key Features)
-
-- **Offline AI Engine:** Tích hợp mô hình `VieNeu-TTS-0.3B-q4-gguf` siêu nhẹ, nạp trực tiếp vào RAM, phản hồi tức thì với độ trễ cực thấp.
-- **🎙️ Voice Cloning (Nhân bản Giọng nói):** Công nghệ Zero-shot tiên tiến giúp sao chép đặc trưng giọng nói chỉ với một file mẫu `.wav` và `.txt` tham chiếu.
-- **🎵 Auto Audio Mixing (Hòa trộn Âm thanh Tự động):** Tích hợp engine `pydub`, tự động lồng ghép nhạc nền từ thư mục `nhac_nen`, điều chỉnh cường độ âm thanh (Vocal/BGM) và xử lý vòng lặp thông minh.
-- **💾 Smart Workspace:** Quản lý luồng công việc theo dạng Dự án (Project-based). Người dùng toàn quyền chỉ định thư mục lưu trữ đầu ra, mang lại trải nghiệm chuyên nghiệp như bộ công cụ Microsoft Office.
-- **🎨 Military Dashboard UI:** Giao diện chỉ huy tối giản, hiện đại, tối ưu cho sự tập trung. Hệ thống được trang bị cơ chế **Error Boundary** giúp ngăn chặn hoàn toàn lỗi Crash đột ngột.
+<p align="center">
+  <img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron">
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI">
+</p>
 
 ---
 
-## 🏗️ Kiến trúc Hệ thống (Architecture)
+## 📖 Tổng quan (Overview)
 
-Hệ thống được xây dựng trên kiến trúc Hybrid hiện đại, tách biệt giữa giao diện điều khiển và lõi xử lý AI:
+**SQTT.AI DESKTOP PRO** là hệ thống phần mềm Desktop độc lập (Offline-first), chuyên dụng cho nhiệm vụ chuyển đổi văn bản thành giọng nói (TTS) Tiếng Việt với độ chuẩn xác và bảo mật cao nhất.
 
-1.  **Giao diện (Frontend):**
-    - Framework: **Electron** & **React**.
-    - Build Tool: **Vite**.
-    - Styling: **Tailwind CSS**.
-    - Đảm nhiệm: Quản lý UI/UX, tương tác người dùng và điều phối tiến trình.
-
-2.  **Lõi xử lý (Backend):**
-    - Ngôn ngữ: **Python 3.x**.
-    - API Framework: **FastAPI** & **Uvicorn**.
-    - AI Library: **Vieneu** (TTS Core).
-    - Audio Logic: **Pydub** & **FFmpeg**.
-
-3.  **Trình quản lý Tiến trình (Process Manager):**
-    - Cơ chế **Auto-spawn**: Frontend tự động khởi chạy Backend ngầm khi ứng dụng bắt đầu.
-    - Cơ chế **Auto-cleanup**: Tự động dọn dẹp tài nguyên và tắt tiến trình Python khi đóng ứng dụng để tối ưu RAM/CPU.
+Được phát triển bởi **DHSYSTEM**, hệ thống tối ưu hóa 100% tài nguyên CPU để vận hành các mô hình ngôn ngữ lớn ngay trên RAM cục bộ, đảm bảo tính bền bỉ và an toàn tuyệt đối trong các kịch bản vận hành nội bộ, cách ly hoàn toàn với Internet.
 
 ---
 
-## 📂 Cấu trúc Thư mục Quan trọng (Project Structure)
+## ⚡ Bảng Tính năng Chiến lược (Key Features)
 
-```bash
-TTS-System/
-├── src/                # Toàn bộ mã nguồn React (Frontend)
-├── main/               # Mã nguồn khởi tạo Electron (Main Process)
-├── backend-dist/       # Lõi xử lý Python và môi trường máy chủ
-│   ├── mb_server.py    # File thực thi FastAPI Server chính
-│   ├── .venv/          # Môi trường ảo Python cô lập
-│   └── nhac_nen/       # Thư mục lưu trữ nhạc nền mặc định
-├── extraResources/     # Tài nguyên bổ sung (Models, Dictionary, FFmpeg)
-├── resources/          # Assets cố định (Icons, Splash screen)
-└── package.json        # Cấu hình dự án và scripts
+| Tính năng             | Mô tả Kỹ thuật                                                      | Lợi ích Chiến lược                                    |
+| :-------------------- | :------------------------------------------------------------------ | :---------------------------------------------------- |
+| **Offline AI Engine** | Sử dụng lõi `VieNeu-TTS-0.3B-q4-gguf` nạp thẳng RAM.                | Hoạt động không cần Internet, độ trễ cực thấp.        |
+| **Voice Cloning**     | Công nghệ nhân bản giọng nói Zero-shot từ file mẫu `.wav` & `.txt`. | Cá nhân hóa thông điệp phát thanh chỉ trong giây lát. |
+| **Auto Audio Mixing** | Tự động lồng nhạc nền, loop và ducking volume qua `pydub`.          | Sản xuất bản tin hoàn chỉnh chuyên nghiệp, tự động.   |
+| **Smart Workspace**   | Quản lý xuất file theo thư mục chỉ định (Office Style).             | Lưu trữ khoa học, dễ dàng tra cứu và quản lý dự án.   |
+| **Military UI/UX**    | Giao diện chỉ huy tối giản, dashboard dashboard chuyên nghiệp.      | Tối ưu hóa tập trung, Error Boundary chống lỗi Crash. |
+
+---
+
+## 🏗️ Cấu trúc Hệ thống (Architecture Tree)
+
+Hệ thống vận hành theo mô hình Client-Server cục bộ (Local Distributed):
+
+```text
+SQTT.AI DESKTOP PRO (Root)
+├── 🖥️ src/ (React Frontend)          # Giao diện người dùng & Logic điều khiển
+├── ⚙️ out/main/ (Electron Main)      # Nhân Electron điều phối tiến trình ngầm
+├── 🐍 backend-dist/ (Python API)      # Lõi FastAPI + Mô hình AI (TTS Engine)
+│   ├── mb_server.py                  # Server entry point
+│   ├── .venv/                        # Môi trường thực thi cô lập
+│   └── output_audio/                 # Bộ đệm âm thanh tạm thời
+├── 🎵 nhac_nen/                       # Thư mục tài nguyên âm nhạc chiến lược
+├── 🚀 assets/                         # Tài nguyên thương hiệu (Logo, Icons)
+└── 📦 extraResources/                 # Các thành phần thực thi bổ trợ (FFmpeg, Models)
 ```
 
 ---
 
-## 🛠️ Hướng dẫn dành cho Nhà phát triển (Development Guide)
+## 🛠️ Hướng dẫn Triển khai (Development & Build)
 
-### Yêu cầu hệ thống:
+### 1. Khởi tạo Frontend (Client Side)
 
-- Node.js (v18+)
-- Python (3.10+)
-
-### Bước 1: Khởi tạo Backend
-
-Di chuyển vào thư mục `backend-dist`, khởi tạo môi trường ảo và cài đặt các thư viện cần thiết:
-
-```powershell
-cd backend-dist
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install fastapi uvicorn vieneu pydub
-```
-
-### Bước 2: Khởi tạo Frontend
-
-Cài đặt các phụ kiện Node.js tại thư mục gốc:
+Hệ thống sử dụng Node.js để vận hành giao diện:
 
 ```bash
+# Cài đặt toàn bộ dependencies
 npm install
 ```
 
-### Bước 3: Chạy môi trường Development
+### 2. Khởi tạo Backend (AI Core)
 
-Khởi chạy ứng dụng ở chế độ lập trình (Hỗ trợ Hot Reload):
+Thiết lập môi trường Python 3.10+ để vận hành lõi AI:
 
 ```bash
+cd backend-dist
+# Tạo môi trường ảo
+python -m venv .venv
+# Kích hoạt (Windows)
+.\.venv\Scripts\activate
+# Cài đặt các thư viện lõi
+pip install fastapi uvicorn vieneu pydub
+```
+
+### 3. Khởi chạy Môi trường Phát triển
+
+```bash
+# Khởi chạy Electron + Vite (Tự động spawn Backend)
 npm run dev
 ```
 
----
+### 4. Đóng gói Xuất xưởng (Production Build)
 
-## 📦 Hướng dẫn Đóng gói (Build Production)
-
-Để tạo file cài đặt chính thức (`.exe`), sử dụng lệnh:
+Để xuất bản bản cài đặt thương mại (`.exe`), sử dụng:
 
 ```bash
 npm run build:win
 ```
 
-> [!IMPORTANT]
-> **Cấu hình ExtraResources:**
-> Hệ thống đã được cấu hình trong `package.json` để tự động đóng gói toàn bộ thư mục `backend-dist` và `extraResources` vào file cài đặt. Điều này giúp ứng dụng có thể chạy độc lập ngay sau khi cài đặt mà không cần thiết lập thêm môi trường Python thủ công trên máy khách.
+> [!NOTE]
+> **Cơ chế extraResources:** Hệ thống tự động đóng gói thư mục `backend-dist` và `extraResources` vào tệp cài đặt thông qua cầu hình trong `package.json`, đảm bảo tính di động tuyệt đối mà không cần cài đặt lại môi trường trên máy đích.
 
 ---
 
 ## 🚀 Hướng dẫn Sử dụng Nhanh (Quick Start)
 
-### 1. Thêm giọng đọc mới (Cloning)
-
-- Chuẩn bị 1 file âm thanh mẫu `.wav` (đã lọc nhiễu) và 1 file `.txt` tương ứng với nội dung trong file âm thanh.
-- Bỏ cả 2 file vào thư mục `/samples` để hệ thống nhận diện tự động trong mục **Voice Lab**.
-
-### 2. Thêm nhạc nền
-
-- Sao chép các file nhạc nền (`.mp3`, `.wav`) vào thư mục `nhac_nen/`.
-- Sử dụng tính năng **BGM Selector** trên bảng điều khiển để chọn và hòa trộn trực tiếp vào bản tin.
+- **Nạp giọng mới:** Thả file `.wav` và `.txt` vào thư mục `samples` để bắt đầu Voice Cloning.
+- **Quản lý nhạc nền:** Thêm tệp âm thanh vào thư mục `nhac_nen/`, hệ thống sẽ tự động cập nhật thư viện trên UI.
+- **Xuất bản:** Chọn thư mục Workspace mong muốn, hệ thống sẽ lưu trữ và quản lý phiên bản tương tự trải nghiệm dùng Word/Excel.
 
 ---
 
-**DHSYSTEM - Kiến tạo nền tảng AI vững chắc.**
+**DHSYSTEM - KIẾN TẠO CÔNG NGHỆ CHỈ HUY.**
