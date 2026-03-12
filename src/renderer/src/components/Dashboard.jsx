@@ -38,9 +38,9 @@ import {
   
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {stats.map((stat, idx) => (
+        {stats.map((stat) => (
           <div 
-            key={idx} 
+            key={stat.label} 
             className="pro-card-xl p-5 flex flex-col relative group transition-all duration-300 hover:translate-y-[-2px]"
           >
             {/* Realtime Badge */}

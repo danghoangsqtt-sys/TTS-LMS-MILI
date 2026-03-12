@@ -1,17 +1,14 @@
 /* eslint-disable react/prop-types */
 import { 
   Mic2, 
-  FileText, 
   BookOpen, 
   Library, 
-  Users2, 
   History, 
   FlaskConical,
   Activity,
-  Shield,
-  Settings,
-  ChevronRight
+  Settings
 } from 'lucide-react'
+import logo from '../assets/logo.png'
 
 const navigationSegments = [
   {
@@ -26,9 +23,7 @@ const navigationSegments = [
   {
     title: 'DỮ LIỆU & CẤU HÌNH',
     items: [
-      { id: 'drafts', label: 'Bản Nháp Hệ Thống', icon: FileText },
       { id: 'lexicon', label: 'Từ Điển Quân Sự', icon: BookOpen },
-      { id: 'voices', label: 'Quản Lý Giọng Nói', icon: Users2 },
     ]
   }
 ]
@@ -47,16 +42,16 @@ export default function Sidebar({
       {/* Brand Header */}
       <div className="p-6 pb-8">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#0D6241] rounded-xl flex items-center justify-center shadow-lg shadow-emerald-900/10 relative flex-shrink-0">
-            <Shield className="text-white h-5 w-5" />
+          <div className="relative flex-shrink-0">
+            <img src={logo} alt="MB-TTS Logo" className="w-10 h-10 object-contain" />
             <div className="absolute -right-0.5 -bottom-0.5 w-3 h-3 bg-white rounded-full flex items-center justify-center p-0.5">
                 <div className="w-full h-full bg-[#10b981] rounded-full" />
             </div>
           </div>
           {!isCollapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-xl font-bold text-gray-900 tracking-tight leading-none">SQTT.AI</span>
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">DESKTOP PRO</span>
+              <span className="text-xl font-bold text-gray-900 tracking-tight leading-none">MB-TTS</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">SYSTEM PRO</span>
             </div>
           )}
         </div>
@@ -64,8 +59,8 @@ export default function Sidebar({
 
       {/* Navigation Segments */}
       <nav className="flex-1 px-3 space-y-8 overflow-y-auto custom-scrollbar">
-        {navigationSegments.map((segment, idx) => (
-          <div key={idx} className="space-y-3">
+        {navigationSegments.map((segment) => (
+          <div key={segment.title} className="space-y-3">
             {!isCollapsed && (
               <h3 className="px-3 text-[9px] font-bold text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
                 <div className="w-1 h-1 rounded-full bg-gray-300" />
@@ -122,20 +117,20 @@ export default function Sidebar({
         <div className="p-4 mt-auto">
           <div className="bg-gray-50 rounded-2xl p-4 space-y-3 border border-gray-100">
             <div className="flex items-center justify-between">
-              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Hệ thống</span>
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Trạng thái Lõi AI</span>
               <Activity className="h-2.5 w-2.5 text-emerald-500" />
             </div>
             
             <div className="space-y-1.5">
               <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-[#0D6241] rounded-full w-[94%]" />
+                <div className="h-full bg-[#0D6241] rounded-full w-full" />
               </div>
               <div className="flex justify-between items-baseline">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Online</span>
+                  <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Nội bộ</span>
                 </div>
-                <span className="text-[9px] font-bold text-gray-400">98%</span>
+                <span className="text-[9px] font-bold text-emerald-500">BẢO MẬT 100%</span>
               </div>
             </div>
             

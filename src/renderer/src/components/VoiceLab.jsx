@@ -1,552 +1,370 @@
-import { useState } from 'react'
-import PropTypes from 'prop-types'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
-  Zap,
-  CheckCircle,
-  Loader2,
-  Trash2,
-  Volume2,
-  Terminal,
-  Copy,
-  Download,
-  FlaskConical,
+  Mic,
+  Square,
   Upload,
+  FolderOpen,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  User,
   FileText,
-  Cpu,
-  AlertTriangle,
+  Zap,
+  Loader2,
+  ArrowRight,
   Info
 } from 'lucide-react'
 
-// Helper Component for terminal/code blocks
-function CodeBlock({
-  code = '',
-  language = 'bash',
-  copyToClipboard = () => {},
-  maxHeight = 'max-h-40'
-}) {
-  if (!code) return null
-  return (
-    <div className="relative group">
-      <div
-        className={`bg-slate-900 rounded-lg p-3 font-mono text-[11px] text-emerald-400 border border-slate-800 overflow-y-auto ${maxHeight} custom-scrollbar`}
-      >
-        <div className="flex justify-between items-start mb-2 sticky top-0 bg-slate-900/90 pb-1 backdrop-blur-sm">
-          <span className="text-slate-500 text-[9px] uppercase tracking-wider font-bold">
-            # {language}
-          </span>
-          <button
-            onClick={() => copyToClipboard(code)}
-            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-md transition text-slate-300 hover:text-white flex items-center gap-1.5 shadow-sm border border-slate-700"
-          >
-            <Copy className="h-3 w-3" />
-            <span className="text-[9px] font-bold">COPY</span>
-          </button>
-        </div>
-        <pre className="whitespace-pre-wrap break-all leading-relaxed">{code}</pre>
-      </div>
-    </div>
-  )
-}
-
 export default function VoiceLab() {
-  const [voiceName, setVoiceName] = useState('')
-  const [audioFile, setAudioFile] = useState(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [successMsg, setSuccessMsg] = useState(null)
+  // --- States ---
+  const [profileName, setProfileName] = useState('')
+  const [transcriptText, setTranscriptText] = useState('')
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingTime, setRecordingTime] = useState(0)
+  const [recordingBlob, setRecordingBlob] = useState(null)
+  const [audioUrl, setAudioUrl] = useState(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
 
-  const handleSaveVoice = async () => {
-    if (!voiceName || !audioFile) {
-      alert('Vui lòng điền đầy đủ thông tin: Tên giọng nói và File mẫu.')
-      return
+  // --- Refs ---
+  const mediaRecorderRef = useRef(null)
+  const timerRef = useRef(null)
+  const chunksRef = useRef([])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop()
+      }
     }
+  }, [])
 
-    setIsLoading(true)
-    setError(null)
-    setSuccessMsg(null)
+  // --- Recording Logic ---
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaRecorderRef.current = new MediaRecorder(stream)
+      chunksRef.current = []
+
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data)
+      }
+
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: 'audio/wav' })
+        setRecordingBlob(blob)
+        setAudioUrl(URL.createObjectURL(blob))
+        stream.getTracks().forEach((track) => track.stop())
+      }
+
+      mediaRecorderRef.current.start()
+      setIsRecording(true)
+      setRecordingTime(0)
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1)
+      }, 1000)
+    } catch (err) {
+      console.error('Error starting recording:', err)
+      showStatus('error', 'Không thể truy cập Microphone. Vui lòng kiểm tra quyền thiết bị.')
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+      clearInterval(timerRef.current)
+    }
+  }
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.type !== 'audio/wav') {
+        showStatus('error', 'Vui lòng chỉ tải lên định dạng .WAV chuẩn kỹ thuật.')
+        return
+      }
+      setRecordingBlob(file)
+      setAudioUrl(URL.createObjectURL(file))
+      showStatus('success', `Đã nạp file: ${file.name}`)
+    }
+  }
+
+  // --- Submit Logic ---
+  const handleCreateProfile = async () => {
+    if (!profileName.trim()) return showStatus('error', 'Vui lòng nhập Tên Hồ Sơ Giọng.')
+    if (!transcriptText.trim()) return showStatus('error', 'Vui lòng nhập Văn bản đối khớp.')
+    if (!recordingBlob) return showStatus('error', 'Chưa có dữ liệu âm thanh mẫu.')
+
+    setIsProcessing(true)
+    setStatusMsg({ type: '', text: '' })
 
     const formData = new FormData()
-    formData.append('voice_name', voiceName)
-    formData.append('audio_file', audioFile)
+    formData.append('voice_name', profileName)
+    formData.append('audio_file', recordingBlob)
+    formData.append('ref_text', transcriptText)
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/add-voice', {
+      const response = await fetch('http://127.0.0.1:8000/api/clone-voice', {
         method: 'POST',
         body: formData
       })
 
-      const data = await response.json().catch(() => ({}))
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.detail || data.error || 'Server returned an error')
+      const data = await response.json()
+      if (data.success) {
+        showStatus('success', 'KHỞI TẠO THÀNH CÔNG: Hồ sơ đã được nạp vào Radar Chỉ huy.')
+        // Clear form on success
+        setProfileName('')
+        setTranscriptText('')
+        setRecordingBlob(null)
+        setAudioUrl(null)
+      } else {
+        throw new Error(data.error || 'Lỗi xử lý đặc trưng âm thanh.')
       }
-
-      setSuccessMsg(data.message || 'Đã lưu thành công!')
-      setVoiceName('')
-      setAudioFile(null)
     } catch (err) {
-      console.error('Saving error:', err)
-      const msg = err.message || 'Không thể kết nối đến AI Engine.'
-      setError(msg)
-      alert(`[LỖI] ${msg}`)
+      showStatus('error', `THẤT BẠI: ${err.message}`)
     } finally {
-      setIsLoading(false)
+      setIsProcessing(false)
     }
   }
 
-  const resetForm = () => {
-    setVoiceName('')
-    setAudioFile(null)
-    setError(null)
-    setSuccessMsg(null)
-  }
-
-  const [activeStep, setActiveStep] = useState(null)
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    alert('Đã sao chép lệnh!')
-  }
-
-  const steps = [
-    {
-      id: 1,
-      title: 'Bước 1: Cài đặt Python chuẩn quân sự (3.10.11)',
-      icon: <Download className="h-5 w-5" />,
-      content: (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Yêu cầu người dùng tải và cài đặt Python 3.10.11 (64-bit) để đảm bảo tính tương thích
-            tuyệt đối với các thư viện AI.
-          </p>
-          <div className="bg-amber-50 border-l-4 border-amber-500 p-3 rounded-r-lg">
-            <div className="flex gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-              <p className="text-xs font-bold text-amber-800 uppercase">
-                BẮT BUỘC: Phải tích vào ô &quot;Add Python 3.10 to PATH&quot; ở màn hình cài đặt đầu
-                tiên.
-              </p>
-            </div>
-          </div>
-          <a
-            href="https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition shadow-sm"
-          >
-            <Download className="h-4 w-4" /> TẢI XUỐNG PYTHON 3.10.11
-          </a>
-        </div>
-      )
-    },
-    {
-      id: 2,
-      title: 'Bước 2: Khởi tạo Lò phản ứng (Môi trường ảo)',
-      icon: <Zap className="h-5 w-5" />,
-      content: (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Tạo thư mục và môi trường ảo biệt lập nằm ngoài dự án để quản lý các dependencies của AI
-            Engine.
-          </p>
-          <CodeBlock
-            code={`cd ..\nmkdir MB-TTS-AI-Engine\ncd MB-TTS-AI-Engine\npy -3.10 -m venv venv\n.\\venv\\Scripts\\Activate.ps1`}
-            language="powershell"
-            copyToClipboard={copyToClipboard}
-          />
-          <p className="text-[10px] text-red-500 italic font-medium">
-            Ghi chú: Nếu báo lỗi đỏ khi Activate, chạy lệnh:{' '}
-            <code className="bg-red-50 px-1 rounded">
-              Set-ExecutionPolicy Unrestricted -Scope CurrentUser
-            </code>
-          </p>
-        </div>
-      )
-    },
-    {
-      id: 3,
-      title: 'Bước 3: Nạp nhân CUDA & Thư viện lõi',
-      icon: <Cpu className="h-5 w-5" />,
-      content: (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Cài đặt PyTorch hỗ trợ CUDA 11.8 và các thư viện xử lý ngôn ngữ, âm thanh.
-          </p>
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-r-lg mb-2">
-            <p className="text-[10px] text-blue-800 leading-tight">
-              Lưu ý: Quá trình này tải khoảng 2-3GB dữ liệu. Vui lòng đảm bảo kết nối mạng ổn định.
-            </p>
-          </div>
-          <CodeBlock
-            code={`pip --default-timeout=2000 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118\npip install fastapi uvicorn python-multipart pydantic TTS transformers==4.37.2`}
-            language="bash"
-            copyToClipboard={copyToClipboard}
-          />
-        </div>
-      )
-    },
-    {
-      id: 4,
-      title: 'Bước 4: Đúc Lõi Động Cơ (Tạo file Server)',
-      icon: <FileText className="h-5 w-5" />,
-      content: (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Tạo file <code className="bg-slate-100 px-1 rounded font-bold">ai_server.py</code> trong
-            thư mục MB-TTS-AI-Engine và dán đoạn mã dưới đây:
-          </p>
-          <CodeBlock
-            code={`import os
-import subprocess
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-
-app = FastAPI(title="MB-TTS Voice Bank Engine", version="3.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Tạo kho lưu trữ giọng nói gốc
-VOICE_BANK_DIR = "voice_bank"
-os.makedirs(VOICE_BANK_DIR, exist_ok=True)
-
-print("[*] Hệ thống Ngân hàng Giọng nói đã khởi động.")
-
-# API 1: XEM DANH SÁCH GIỌNG ĐÃ LƯU
-@app.get("/api/voices")
-async def get_voices():
-    voices = []
-    for file in os.listdir(VOICE_BANK_DIR):
-        if file.endswith(".wav"):
-            voice_name = file.replace(".wav", "")
-            voices.append({"id": voice_name, "name": voice_name})
-    return {"success": True, "voices": voices}
-
-# API 2: THÊM GIỌNG MỚI VÀO NGÂN HÀNG (Chỉ làm 1 lần cho mỗi người)
-@app.post("/api/add-voice")
-async def add_voice(
-    voice_name: str = Form(...),
-    audio_file: UploadFile = File(...)
-):
-    print(f"[+] Đang lưu trữ định danh giọng mới: {voice_name}")
-    
-    # Định dạng tên file an toàn (bỏ khoảng trắng)
-    safe_name = voice_name.strip().replace(" ", "_")
-    save_path = os.path.join(VOICE_BANK_DIR, f"{safe_name}.wav")
-    
-    with open(save_path, "wb") as f:
-        f.write(await audio_file.read())
-        
-    return {"success": True, "message": f"Đã lưu thành công giọng: {voice_name}"}
-
-# API 3: SỬ DỤNG GIỌNG ĐÃ LƯU ĐỂ ĐỌC VĂN BẢN (Dùng nhiều lần)
-@app.post("/api/tts")
-async def generate_tts(
-    voice_id: str = Form(...),
-    text: str = Form(...)
-):
-    print(f"\\n[+] Lệnh TTS - Giọng: {voice_id}")
-    
-    ref_audio_path = os.path.join(VOICE_BANK_DIR, f"{voice_id}.wav")
-    if not os.path.exists(ref_audio_path):
-        raise HTTPException(status_code=404, detail="Không tìm thấy giọng nói này trong kho.")
-        
-    output_dir = "output_audio"
-    os.makedirs(output_dir, exist_ok=True)
-    default_out_file = os.path.join(output_dir, "out.wav")
-    final_output_path = os.path.join(output_dir, f"tts_{voice_id}.wav")
-    
-    command = [
-        "f5-tts_infer-cli",
-        "--model", "F5TTS_v1_Base",
-        "--ref_audio", ref_audio_path,
-        "--gen_text", text,
-        "--output_dir", output_dir
-    ]
-    
-    try:
-        print("[*] Đang xuất audio...")
-        subprocess.run(command, check=True)
-        
-        if os.path.exists(default_out_file):
-            if os.path.exists(final_output_path):
-                os.remove(final_output_path)
-            os.rename(default_out_file, final_output_path)
-            print(f"[+] Hoàn tất xử lý cho giọng {voice_id}!")
-        else:
-            raise Exception("Lỗi file đầu ra.")
-            
-    except subprocess.CalledProcessError:
-        return {"success": False, "error": "Lỗi phần cứng khi xử lý."}
-        
-    return FileResponse(final_output_path, media_type="audio/wav")
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)`}
-            language="python"
-            copyToClipboard={copyToClipboard}
-            maxHeight="max-h-64"
-          />
-        </div>
-      )
-    },
-    {
-      id: 5,
-      title: 'Bước 5: Kích hoạt hệ thống',
-      icon: <CheckCircle className="h-5 w-5" />,
-      content: (
-        <div className="space-y-3">
-          <p className="text-sm text-slate-600">
-            Khởi động AI Engine lần đầu để tải mô hình (1.87GB) và bắt đầu phục vụ.
-          </p>
-          <CodeBlock
-            code={`python ai_server.py`}
-            language="bash"
-            copyToClipboard={copyToClipboard}
-          />
-          <div className="bg-slate-100 rounded-lg p-3 text-[11px] text-slate-600 border border-slate-200">
-            <p>
-              ● Lần đầu chạy sẽ yêu cầu xác nhận CPML (gõ{' '}
-              <kbd className="bg-white px-1 border rounded shadow-sm text-blue-600 font-bold">
-                y
-              </kbd>{' '}
-              và Enter).
-            </p>
-            <p>
-              ● Hãy giữ nguyên cửa sổ Terminal này chạy ngầm trong suốt quá trình sử dụng phần mềm.
-            </p>
-          </div>
-        </div>
-      )
+  const showStatus = useCallback((type, text) => {
+    setStatusMsg({ type, text })
+    if (type === 'success') {
+      setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000)
     }
-  ]
+  }, [])
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-      {/* New Onboarding Guide Section */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-slate-800 flex items-center justify-center">
-              <Terminal className="h-4 w-4 text-white" />
-            </div>
-            <h2 className="font-bold text-slate-800 uppercase tracking-tight text-xs">
-              Hướng Dẫn Cài Đặt Động Cơ Voice Bank
-            </h2>
+    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500 pb-10">
+      
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+            <span className="p-2 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200">
+              <Mic size={24} />
+            </span>
+            Phòng Thu Tác Chiến
+          </h1>
+          <p className="text-slate-500 font-medium mt-2 flex items-center gap-2">
+            Hệ thống Nhân bản Giọng nói Neural (Zero-shot Cloning) <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold uppercase tracking-widest">Khối DHS-Cloning</span>
+          </p>
+        </div>
+        
+        {statusMsg.text && (
+          <div className={`px-4 py-3 rounded-2xl flex items-center gap-3 animate-in slide-in-from-right-4 shadow-sm border ${
+            statusMsg.type === 'error' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
+          }`}>
+            {statusMsg.type === 'error' ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+            <span className="text-xs font-bold uppercase tracking-tight">{statusMsg.text}</span>
           </div>
-          <span className="text-[10px] bg-emerald-50 text-emerald-600 font-bold px-2 py-1 rounded-full uppercase border border-emerald-100">
-            Yêu cầu card NVIDIA
-          </span>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {steps.map((step) => (
-            <div key={step.id} className="group">
-              <button
-                onClick={() => setActiveStep(activeStep === step.id ? null : step.id)}
-                className="w-full flex items-center justify-between p-4 hover:bg-slate-50/80 transition-colors text-left"
-              >
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`h-10 w-10 rounded-full flex items-center justify-center transition-colors ${activeStep === step.id ? 'bg-[#10b981] text-white shadow-md' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}
-                  >
-                    {step.icon}
-                  </div>
-                  <h3
-                    className={`font-black uppercase tracking-wider text-[11px] transition-colors ${activeStep === step.id ? 'text-[#10b981]' : 'text-slate-700'}`}
-                  >
-                    {step.title}
-                  </h3>
-                </div>
-                <div
-                  className={`transform transition-transform duration-200 ${activeStep === step.id ? 'rotate-180' : ''}`}
-                >
-                  <svg
-                    className={`h-5 w-5 ${activeStep === step.id ? 'text-[#10b981]' : 'text-slate-400'}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </button>
-
-              {activeStep === step.id && (
-                <div className="px-18 pb-6 pr-6 pl-18 md:pl-20 animate-in slide-in-from-top-2 duration-300">
-                  {step.content}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Form Section */}
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-6">
-          <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-            <div className="h-10 w-10 rounded-lg bg-white flex items-center justify-center border border-slate-200 shadow-sm">
-              <FlaskConical className="h-6 w-6 text-[#10b981]" />
+      <div className="grid grid-cols-1 lg:grid-cols-[35fr_65fr] gap-6 items-start">
+        
+        {/* Left Column: Guidelines */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-3">
+              <Info className="text-emerald-600" size={20} />
+              <h2 className="font-black text-slate-800 uppercase tracking-wider text-xs">📋 Tiêu chuẩn Hồ sơ Giọng nói</h2>
             </div>
-            <div>
-              <h3 className="font-black text-slate-800 uppercase text-xs tracking-wider">Thêm Giọng Vào Ngân Hàng</h3>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">
-                Military Standard Lab
-              </p>
+            
+            <div className="p-6 space-y-5">
+              {[
+                { title: 'Thời lượng vàng', desc: 'Âm thanh mẫu tối ưu từ 5 đến 15 giây.', icon: <Clock size={16} /> },
+                { title: 'Chất lượng phòng thu', desc: 'Định dạng WAV, không tạp âm, không nhạc nền.', icon: <Zap size={16} /> },
+                { title: 'Văn bản đối khớp', desc: 'Chính xác 100% nội dung người nói đang đọc.', icon: <FileText size={16} /> },
+                { title: 'Môi trường yên tĩnh', desc: 'Tránh các khu vực có tiếng vang hoặc gió.', icon: <Mic size={16} /> }
+              ].map((item, idx) => (
+                <div key={idx} className="flex gap-4 group">
+                  <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-tight">{item.title}</h4>
+                    <p className="text-xs text-slate-500 leading-relaxed mt-0.5">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+              
+              <div className="pt-4 border-t border-slate-100 mt-2">
+                <button 
+                  onClick={() => alert('Đang mở thư mục Voice Bank...')}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all text-xs font-bold border border-slate-200"
+                >
+                  <FolderOpen size={16} />
+                  Mở thư mục Kho Giọng gốc
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            {/* Voice Name */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest">
-                <CheckCircle className="h-3.5 w-3.5 text-[#10b981]" />
-                Tên Giọng Đọc
-              </label>
-              <input
-                type="text"
-                placeholder="Ví dụ: Giọng Đồng chí A"
-                value={voiceName}
-                onChange={(e) => setVoiceName(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#10b981] focus:border-[#10b981] transition-all font-bold text-slate-700"
-              />
+          <div className="bg-emerald-900 rounded-2xl p-6 text-white overflow-hidden relative shadow-xl">
+            <div className="absolute -right-8 -bottom-8 opacity-10">
+              <Mic size={150} />
+            </div>
+            <h3 className="text-xs font-black uppercase tracking-[0.2em] opacity-60 mb-2">Trạng thái Lõi</h3>
+            <p className="text-lg font-bold leading-tight uppercase">Hệ thống sẵn sàng tiếp nhận tín hiệu Neural</p>
+            <div className="mt-4 flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[10px] font-black tracking-widest uppercase text-emerald-300">DHS-Engine v2.0 Active</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Recording Station */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col min-h-[600px] overflow-hidden">
+          
+          <div className="p-8 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-2xl bg-slate-800 flex items-center justify-center text-white shadow-lg shadow-slate-200">
+                <Zap size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Hệ thống Nhân bản Giọng</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">Khối Điều khiển DHS-Cloning Central</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-8 flex-1 space-y-8">
+            
+            {/* Step 1: Identification */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-slate-800 text-white text-[10px] font-black flex items-center justify-center">1</span>
+                <label className="text-xs font-black text-slate-600 uppercase tracking-widest">Tên Hồ Sơ Giọng (Định danh)</label>
+              </div>
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <User size={18} />
+                </div>
+                <input 
+                  type="text" 
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Ví dụ: Đại úy Hùng - Miền Bắc"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-300"
+                />
+              </div>
             </div>
 
-            {/* Audio File */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-2 tracking-widest">
-                <Upload className="h-3.5 w-3.5 text-[#10b981]" />
-                File Âm Thanh Mẫu
-              </label>
-              <div className="relative group">
-                <input
-                  type="file"
-                  accept=".wav,.mp3"
-                  onChange={(e) => setAudioFile(e.target.files[0])}
-                  className="absolute inset-0 opacity-0 cursor-pointer z-10"
+            {/* Step 2: Transcript */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-slate-800 text-white text-[10px] font-black flex items-center justify-center">2</span>
+                <label className="text-xs font-black text-slate-600 uppercase tracking-widest">Văn bản mẫu (Lời thoại đọc)</label>
+              </div>
+              <div className="relative">
+                <div className="absolute left-4 top-4 text-slate-400">
+                  <FileText size={18} />
+                </div>
+                <textarea 
+                  rows={4}
+                  value={transcriptText}
+                  onChange={(e) => setTranscriptText(e.target.value)}
+                  placeholder="Nhập chính xác 100% nội dung bạn định đọc trong audio mẫu..."
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all placeholder:text-slate-300 resize-none leading-relaxed"
                 />
-                <div
-                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-all ${audioFile ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 group-hover:border-[#10b981] group-hover:bg-slate-50'}`}
-                >
-                  <Volume2
-                    className={`h-8 w-8 mx-auto mb-2 ${audioFile ? 'text-emerald-500' : 'text-slate-300'}`}
-                  />
-                  <p className="text-xs font-black text-slate-800 truncate">
-                    {audioFile ? audioFile.name : 'Nhấp hoặc kéo thả file .wav / .mp3'}
-                  </p>
-                  <p className="text-[9px] text-slate-400 mt-1 uppercase font-black tracking-widest">Tối đa 10 giây. Âm thanh rõ nét.</p>
+              </div>
+            </div>
+
+            {/* Step 3: Audio Control */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-slate-800 text-white text-[10px] font-black flex items-center justify-center">3</span>
+                <label className="text-xs font-black text-slate-600 uppercase tracking-widest">Kiểm soát Tín hiệu Âm thanh</label>
+              </div>
+              
+              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-10 flex flex-col items-center justify-center gap-6 relative group overflow-hidden">
+                
+                {audioUrl && !isRecording && (
+                   <div className="absolute top-4 right-4 animate-in fade-in zoom-in">
+                      <audio controls src={audioUrl} className="h-8 w-48 opacity-60 hover:opacity-100 transition-opacity" />
+                   </div>
+                )}
+
+                <div className="relative">
+                  {isRecording && (
+                    <div className="absolute -inset-8 bg-red-500/5 rounded-full animate-ping" />
+                  )}
+                  <button 
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`h-24 w-24 rounded-full flex items-center justify-center transition-all shadow-2xl relative z-10 ${
+                      isRecording 
+                      ? 'bg-red-500 text-white animate-pulse shadow-red-200 scale-110' 
+                      : 'bg-white text-slate-400 border-4 border-slate-100 hover:border-emerald-500 hover:text-emerald-500 shadow-slate-100'
+                    }`}
+                  >
+                    {isRecording ? <Square size={32} /> : <Mic size={32} />}
+                  </button>
+                </div>
+
+                <div className="text-center space-y-1">
+                   {isRecording ? (
+                     <>
+                        <p className="text-2xl font-black text-red-500 font-mono tracking-tighter">{formatTime(recordingTime)}</p>
+                        <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Đang thu tín hiệu...</p>
+                     </>
+                   ) : (
+                     <>
+                        <p className="text-sm font-black text-slate-800 uppercase tracking-tight">Nhấn để bắt đầu thu âm</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest max-w-[200px] leading-relaxed">Đảm bảo bạn đọc to, rõ lời và ngắt nghỉ đúng dấu câu.</p>
+                     </>
+                   )}
+                </div>
+
+                <div className="pt-4 flex flex-col items-center gap-3">
+                   <div className="h-px w-32 bg-slate-200" />
+                   <label className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full hover:bg-slate-50 transition-colors shadow-sm">
+                      <Upload size={14} className="text-emerald-600" />
+                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Hoặc tải file .wav</span>
+                      <input type="file" accept=".wav" onChange={handleFileUpload} className="hidden" />
+                   </label>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleSaveVoice}
-                disabled={isLoading || !voiceName || !audioFile}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-md
-                  ${
-                    isLoading
-                      ? 'bg-slate-100 text-slate-400 cursor-wait'
-                      : 'bg-[#10b981] text-white hover:bg-[#059669] active:scale-[0.98]'
-                  } disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed`}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    ĐANG XỬ LÝ GPU...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4" />
-                    💾 LƯU VÀO NGÂN HÀNG
-                  </>
-                )}
-              </button>
+          </div>
 
-              <button
-                onClick={resetForm}
-                className="px-4 py-3 border border-slate-200 rounded text-slate-300 hover:bg-red-50 hover:text-red-500 transition-all"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
+          <div className="p-8 bg-slate-50 border-t border-slate-100">
+            <button 
+              onClick={handleCreateProfile}
+              disabled={isProcessing || isRecording}
+              className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 font-black text-sm uppercase tracking-[0.2em] transition-all shadow-xl ${
+                isProcessing 
+                ? 'bg-slate-200 text-slate-400 cursor-wait' 
+                : 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:shadow-emerald-200 hover:-translate-y-1 active:translate-y-0'
+              }`}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} />
+                  Đang đúc lõi hồ sơ...
+                </>
+              ) : (
+                <>
+                  <Zap size={20} />
+                  ⚡ TẠO HỒ SƠ NHÂN BẢN GIỌNG
+                  <ArrowRight size={18} className="opacity-50" />
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Status & Output Section */}
-        <div className="space-y-6">
-          <div className="bg-slate-900 rounded-xl p-6 text-white shadow-xl min-h-[200px] flex flex-col border border-slate-800">
-            <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-[#10b981]" />
-                System Terminal
-              </h3>
-              <div className="flex gap-1.5 ">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
-              </div>
-            </div>
-
-            <div className="flex-1 font-mono text-[11px] space-y-2 text-slate-300">
-              <p className="text-emerald-400/80">$ system_status: <span className="text-emerald-400 font-bold">IDLE</span></p>
-              {isLoading && (
-                <p className="animate-pulse text-blue-400 italic">
-                  [BUSY] Đang gửi file âm thanh gốc lên Ngân hàng Giọng nói...
-                </p>
-              )}
-              {error && <p className="text-red-400 font-bold">[ERROR] {error}</p>}
-              {successMsg && <p className="text-emerald-400 font-bold">[SUCCESS] {successMsg}</p>}
-              {!isLoading && !error && !successMsg && (
-                <p className="text-slate-500 italic opacity-60">Sẵn sàng tiếp nhận yêu cầu từ phòng Lab.</p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Info className="h-4 w-4 text-[#10b981]" />
-              <h4 className="text-[10px] font-black text-slate-800 uppercase tracking-widest">Quy trình Lab</h4>
-            </div>
-            <ul className="space-y-3">
-              <li className="flex gap-3 text-[11px] text-slate-600 font-bold uppercase tracking-tight">
-                <span className="text-[#10b981] font-black">01.</span>
-                <span>Nhập tên định danh cho giọng nói để lưu vào hệ thống.</span>
-              </li>
-              <li className="flex gap-3 text-[11px] text-slate-600 font-bold uppercase tracking-tight">
-                <span className="text-[#10b981] font-black">02.</span>
-                <span>Cung cấp 5-10 giây âm thanh mẫu rõ lời, không nhạc nền.</span>
-              </li>
-              <li className="flex gap-3 text-[11px] text-slate-600 font-bold uppercase tracking-tight leading-relaxed">
-                <span className="text-[#10b981] font-black">03.</span>
-                <span>
-                  Hệ thống sẽ lưu trữ đặc trưng âm học vào thư mục Voice Bank. Tất cả giọng sẽ tự
-                  động xuất hiện ở tính năng Phát thanh.
-                </span>
-              </li>
-            </ul>
-          </div>
-        </div>
       </div>
     </div>
   )
-}
-
-CodeBlock.propTypes = {
-  code: PropTypes.string,
-  language: PropTypes.string,
-  copyToClipboard: PropTypes.func,
-  maxHeight: PropTypes.string
 }

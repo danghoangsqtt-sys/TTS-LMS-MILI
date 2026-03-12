@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Sidebar from './components/Sidebar'
 import TTSConverter from './components/TTSConverter'
 import HistoryLog from './components/HistoryLog'
 import LectureLibrary from './components/LectureLibrary'
 import LexiconManager from './components/LexiconManager'
-import VoiceManager from './components/VoiceManager'
-import DraftManager from './components/DraftManager'
 import VoiceLab from './components/VoiceLab'
-import { HelpCircle, Search, FolderOpen, Settings } from 'lucide-react'
-import About from './components/About'
-import UserGuide from './components/UserGuide'
+import { Search, FolderOpen, Settings } from 'lucide-react'
+import SystemConfig from './components/SystemConfig'
 import SplashScreen from './components/SplashScreen'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -17,7 +14,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('tts')
   const [history, setHistory] = useState([])
   const [prefillText, setPrefillText] = useState('')
-  const [activeDraft, setActiveDraft] = useState(null)
   const [isCollapsed, setIsCollapsed] = useState(false)
   
   // Desktop Production States
@@ -32,7 +28,6 @@ export default function App() {
   // Caching & Initialization
   const [isInitializing, setIsInitializing] = useState(true)
   const [isConnecting, setIsConnecting] = useState(false)
-  const [connectionError, setConnectionError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const [voices, setVoices] = useState([])
   const [voicesLoading, setVoicesLoading] = useState(true)
@@ -53,7 +48,6 @@ export default function App() {
 
   const attemptConnection = async (count = 0) => {
     setIsConnecting(true)
-    setConnectionError(false)
     setVoicesLoading(true)
     
     try {
@@ -72,7 +66,6 @@ export default function App() {
         setRetryCount(count + 1)
         setTimeout(() => attemptConnection(count + 1), 2000)
       } else {
-        setConnectionError(true)
         setIsConnecting(false)
         setVoicesLoading(false)
       }
@@ -89,7 +82,16 @@ export default function App() {
   }
 
   const handleDeleteEntry = (id) => {
-    setHistory((prev) => prev.filter((h) => h.id !== id))
+    setHistory((prev) => {
+      const updated = prev.filter((h) => h.id !== id)
+      localStorage.setItem('mb_history', JSON.stringify(updated))
+      return updated
+    })
+  }
+
+  const handleClearHistory = () => {
+    setHistory([])
+    localStorage.removeItem('mb_history')
   }
 
   const handleUseScript = (text) => {
@@ -99,11 +101,6 @@ export default function App() {
 
   const handleRebroadcast = (text) => {
     setPrefillText(text)
-    setActiveTab('tts')
-  }
-
-  const handleOpenDraft = (draft) => {
-    setActiveDraft(draft)
     setActiveTab('tts')
   }
 
@@ -192,8 +189,6 @@ export default function App() {
                   <TTSConverter
                     onConversionComplete={handleConversionComplete}
                     externalText={prefillText}
-                    activeDraft={activeDraft}
-                    clearDraft={() => setActiveDraft(null)}
                     cachedVoices={voices || []}
                     voicesLoading={voicesLoading}
                     workspacePath={workspacePath}
@@ -204,26 +199,20 @@ export default function App() {
                     <HistoryLog
                       history={history || []}
                       onDeleteEntry={handleDeleteEntry}
+                      onClearHistory={handleClearHistory}
                       onRebroadcast={handleRebroadcast}
                     />
                   )}
                 </div>
               )}
 
-              {activeTab === 'drafts' && <DraftManager onOpenDraft={handleOpenDraft} />}
               {activeTab === 'lexicon' && <LexiconManager />}
               {activeTab === 'library' && <LectureLibrary onUseScript={handleUseScript} />}
-              {activeTab === 'voices' && (
-                <VoiceManager 
-                  voices={voices || []} 
-                  loading={voicesLoading} 
-                  refreshVoices={attemptConnection} 
-                />
-              )}
               {activeTab === 'history' && (
                 <HistoryLog
                   history={history || []}
                   onDeleteEntry={handleDeleteEntry}
+                  onClearHistory={handleClearHistory}
                   onRebroadcast={handleRebroadcast}
                 />
               )}
@@ -254,19 +243,14 @@ export default function App() {
                 &times;
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <About />
-                <UserGuide />
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-50 flex justify-end bg-gray-50/30">
-              <button 
-                onClick={() => setShowHelp(false)}
-                className="px-8 py-3 bg-[#0D6241] hover:bg-[#0B4D33] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-emerald-900/10 active:scale-95"
-              >
-                Đóng cấu hình
-              </button>
+            <div className="flex-1 overflow-hidden bg-white">
+              <SystemConfig 
+                onClose={() => setShowHelp(false)}
+                workspacePath={workspacePath}
+                setWorkspacePath={setWorkspacePath}
+                prosodyConfig={prosodyConfig}
+                setProsodyConfig={setProsodyConfig}
+              />
             </div>
           </div>
         </div>

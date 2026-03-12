@@ -42,22 +42,6 @@ function loadDictionary() {
   }
 }
 
-function normalizeText(text) {
-  const dict = loadDictionary()
-  let normalized = text
-  const sortedKeys = Object.keys(dict).sort((a, b) => b.length - a.length)
-  for (const abbr of sortedKeys) {
-    const escaped = abbr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    // Use \b for pure-ASCII abbreviations (exact whole-word match)
-    // Use Unicode-aware lookaround for non-ASCII keys
-    const isAscii = /^[\x20-\x7E]+$/.test(abbr)
-    const pattern = isAscii ? `\\b${escaped}\\b` : `(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`
-    const regex = new RegExp(pattern, 'gu')
-    normalized = normalized.replace(regex, dict[abbr])
-  }
-  return normalized
-}
-
 function cleanupFiles(...paths) {
   for (const p of paths) {
     try {
@@ -66,38 +50,6 @@ function cleanupFiles(...paths) {
       /* ignore */
     }
   }
-}
-
-/**
- * Generate a silent WAV file (16-bit PCM, 16kHz mono) of given duration in seconds.
- */
-function generateSilenceWav(durationSec, outputPath) {
-  const sampleRate = 16000
-  const numChannels = 1
-  const bitsPerSample = 16
-  const numSamples = Math.round(sampleRate * durationSec)
-  const dataSize = numSamples * numChannels * (bitsPerSample / 8)
-  const buffer = Buffer.alloc(44 + dataSize, 0) // 44-byte WAV header + silent PCM data
-
-  // RIFF header
-  buffer.write('RIFF', 0)
-  buffer.writeUInt32LE(36 + dataSize, 4)
-  buffer.write('WAVE', 8)
-  // fmt sub-chunk
-  buffer.write('fmt ', 12)
-  buffer.writeUInt32LE(16, 16) // sub-chunk size
-  buffer.writeUInt16LE(1, 20) // PCM format
-  buffer.writeUInt16LE(numChannels, 22)
-  buffer.writeUInt32LE(sampleRate, 24)
-  buffer.writeUInt32LE(sampleRate * numChannels * (bitsPerSample / 8), 28) // byte rate
-  buffer.writeUInt16LE(numChannels * (bitsPerSample / 8), 32) // block align
-  buffer.writeUInt16LE(bitsPerSample, 34)
-  // data sub-chunk
-  buffer.write('data', 36)
-  buffer.writeUInt32LE(dataSize, 40)
-  // PCM data is all zeros (silence) — already allocated as 0
-
-  writeFileSync(outputPath, buffer)
 }
 
 /**
@@ -187,6 +139,7 @@ function createWindow() {
     height: 750,
     show: false,
     autoHideMenuBar: true,
+    title: 'MB-TTS System',
     icon,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -502,6 +455,20 @@ function registerIpcHandlers() {
     shell.openPath(bgmPath)
     return { success: true }
   })
+
+  // ----- Open Voice Samples Folder -----
+  ipcMain.handle('open-voices-folder', async () => {
+    const isPackaged = app.isPackaged
+    const voicesPath = isPackaged
+      ? join(process.resourcesPath, 'backend', 'src', 'vieneu', 'assets', 'samples')
+      : join(app.getAppPath(), 'backend-dist', 'src', 'vieneu', 'assets', 'samples')
+
+    if (!existsSync(voicesPath)) {
+      return { success: false, reason: 'Folder not found: ' + voicesPath }
+    }
+    shell.openPath(voicesPath)
+    return { success: true }
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -568,8 +535,6 @@ function startBackend() {
       console.log(`[Backend Manager] Server process exited with code ${code}`)
       backendProcess = null
     })
-
-    console.log(`[Backend Manager] Server spawned successfully (PID: ${backendProcess.pid})`)
   } catch (err) {
     console.error(`[Backend Manager] Exception while starting backend: ${err.message}`)
   }
@@ -604,7 +569,7 @@ function stopBackend() {
 // ---------------------------------------------------------------------------
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.electron.mb-tts')
+  electronApp.setAppUserModelId('com.sqtt.mbtts')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)

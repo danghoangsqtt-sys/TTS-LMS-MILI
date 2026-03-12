@@ -11,22 +11,22 @@ export default function About() {
         <div className="space-y-6 relative z-10">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-slate-50 border border-slate-100 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
             <Zap className="h-3 w-3 text-[#10b981]" />
-            Neural AI Core v1.1.0
+            Neural DHS-Sigma Core v2.0
           </div>
           
           <div className="space-y-1">
             <h1 className="text-3xl font-black tracking-tight uppercase text-slate-800">
               MB-TTS <span className="text-[#10b981]">SYSTEM</span>
             </h1>
-            <p className="text-slate-400 font-black uppercase text-[10px] tracking-[0.3em]">
-              Architected by <span className="text-slate-600">DHSYSTEM</span>
-            </p>
+            <p className="text-slate-400 font-black text-[9px] uppercase tracking-[0.3em]">
+          Thông tin hệ thống: Trạng thái Động cơ [Hoạt động] | Phiên bản Operational (Sigma)
+        </p>
           </div>
 
           <p className="max-w-2xl text-sm leading-relaxed text-slate-500 font-medium">
-            MB-TTS được thiết kế cho các kịch bản phát thanh chuyên nghiệp, tích hợp Deep Neural Networks 
+            MB-TTS được thiết kế cho các kịch bản phát thanh chuyên nghiệp, tích hợp hệ thống Mạng nơ-ron
             tối ưu riêng cho ngữ âm Tiếng Việt. Hệ thống vận hành hoàn toàn Offline, đảm bảo an toàn 
-            không gian mạng và bảo mật dữ liệu tuyệt đối. Tích hợp AI Core v0.3B Q4 GGUF cho hiệu năng 
+            không gian mạng và bảo mật dữ liệu tuyệt đối. Tích hợp Lõi Tham mưu (Sigma) cho hiệu năng 
             vượt trội trên mọi cấu hình phần cứng.
           </p>
 

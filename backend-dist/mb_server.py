@@ -12,24 +12,35 @@ import io
 import json
 from pydub import AudioSegment
 import soundfile as sf
+from llama_cpp import Llama
+from pydantic import BaseModel
 
 from fastapi import FastAPI, Form, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import time
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Ép hệ thống tải và lưu model vào thư mục "model_cache" ngay bên trong thư mục dự án
 # Điều này cực kỳ quan trọng để khi đóng gói, phần mềm mang theo được "bộ não"
-os.environ["HF_HOME"] = os.path.join(os.getcwd(), "model_cache")
+os.environ["HF_HOME"] = os.path.join(BASE_DIR, "model_cache")
 
 from vieneu import Vieneu
 
 app = FastAPI(title="MB-TTS API Server (DHSYSTEM Core)", version="3.0")
 
-# Cấu hình CORS để Electron (Frontend) có thể gọi API mà không bị chặn
+app = FastAPI(title="MB-TTS API Server (DHSYSTEM Core)", version="3.0")
+LLM_MODEL_PATH = os.path.join(BASE_DIR, "model_cache", "llm", "local_llm.gguf")
+llm_engine = None
+
+class GenerateRequest(BaseModel):
+    prompt: str
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,11 +53,11 @@ tts = Vieneu(
     backbone_repo="pnnbao-ump/VieNeu-TTS-0.3B-q4-gguf" 
 )
 
-VOICE_BANK_DIR = "src/vieneu/assets/samples"
+VOICE_BANK_DIR = os.path.join(BASE_DIR, "src", "vieneu", "assets", "samples")
 os.makedirs(VOICE_BANK_DIR, exist_ok=True)
 
 # Thư mục chứa nhạc nền (Tiếng Việt không dấu)
-BGM_DIR = "nhac_nen"
+BGM_DIR = os.path.join(BASE_DIR, "nhac_nen")
 os.makedirs(BGM_DIR, exist_ok=True)
 
 # Biến trạng thái toàn cục
@@ -100,17 +111,17 @@ async def health_check():
     return {"status": "alive"}
 
 @app.get("/api/voices")
-async def get_voices():
+async def get_available_voices():
     """Lấy danh sách các giọng nói đã được định danh (có đủ file wav và txt)"""
     voices = []
     if os.path.exists(VOICE_BANK_DIR):
         for file in os.listdir(VOICE_BANK_DIR):
-            if file.endswith(".wav"):
-                voice_name = file.replace(".wav", "")
-                # Chỉ hiển thị nếu có kèm file nội dung (transcript) để phục vụ clone
-                if os.path.exists(os.path.join(VOICE_BANK_DIR, f"{voice_name}.txt")):
-                    voices.append({"id": voice_name, "name": voice_name})
-    return {"success": True, "voices": voices}
+            if file.endswith(".txt"):
+                base_name = file[:-4]
+                # Chỉ xác nhận là giọng hợp lệ nếu có cả file .wav đi kèm
+                if os.path.exists(os.path.join(VOICE_BANK_DIR, f"{base_name}.wav")):
+                    voices.append(base_name)
+    return {"success": True, "voices": sorted(voices)}
 
 @app.get("/api/bgm")
 async def get_bgm_list():
@@ -122,25 +133,45 @@ async def get_bgm_list():
                 bgm_list.append(file)
     return {"success": True, "bgm": bgm_list}
 
+@app.post("/api/clone-voice")
+async def clone_voice(
+    voice_name: str = Form(...),
+    ref_text: str = Form(...),
+    audio_file: UploadFile = File(...)
+):
+    """API Nhân bản giọng nói: Nhận Audio và văn bản mẫu để tạo hồ sơ"""
+    try:
+        import shutil
+        # Dọn dẹp tên file để tránh lỗi hệ điều hành
+        safe_name = "".join([c for c in voice_name if c.isalpha() or c.isdigit() or c in " -_()"]).strip()
+        if not safe_name:
+            return {"success": False, "error": "Tên giọng không hợp lệ."}
+
+        wav_path = os.path.join(VOICE_BANK_DIR, f"{safe_name}.wav")
+        txt_path = os.path.join(VOICE_BANK_DIR, f"{safe_name}.txt")
+        
+        # Lưu file Audio
+        with open(wav_path, "wb") as buffer:
+            shutil.copyfileobj(audio_file.file, buffer)
+            
+        # Lưu file Text (UTF-8)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(ref_text)
+            
+        print(f"[+] Đã khởi tạo hồ sơ nhân bản: {safe_name}")
+        return {"success": True, "message": f"Đã khởi tạo thành công hồ sơ: {safe_name}"}
+    except Exception as e:
+        print(f"[-] Lỗi Clone Voice: {e}")
+        return {"success": False, "error": str(e)}
+
 @app.post("/api/add-voice")
 async def add_voice(
     voice_name: str = Form(...),
     ref_text: str = Form(...),
     audio_file: UploadFile = File(...)
 ):
-    """API lưu giọng nói mới vào Ngân hàng giọng nói"""
-    safe_name = voice_name.strip()
-    wav_path = os.path.join(VOICE_BANK_DIR, f"{safe_name}.wav")
-    txt_path = os.path.join(VOICE_BANK_DIR, f"{safe_name}.txt")
-    
-    try:
-        with open(wav_path, "wb") as f:
-            f.write(await audio_file.read())
-        with open(txt_path, "w", encoding="utf-8") as f:
-            f.write(ref_text)
-        return {"success": True, "message": f"Đã lưu giọng: {safe_name}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """Fallback / Legacy API (Khuyên dùng /api/clone-voice thay thế)"""
+    return await clone_voice(voice_name, ref_text, audio_file)
 
 @app.get("/api/voices/{voice_id}/sample")
 async def get_voice_sample(voice_id: str):
@@ -178,7 +209,7 @@ async def generate_tts(
         final_output_path = os.path.join(save_path, f"tts_{voice_id}.wav")
     else:
         # Fallback nếu người dùng chưa chọn thư mục
-        output_dir = "output_audio"
+        output_dir = os.path.join(BASE_DIR, "output_audio")
         os.makedirs(output_dir, exist_ok=True)
         final_output_path = os.path.join(output_dir, f"tts_{voice_id}.wav")
     
@@ -269,14 +300,14 @@ async def generate_tts(
                 except Exception as mix_err:
                     print(f"[-] Lỗi khi trộn âm (Dùng bản Raw): {mix_err}")
                     if os.path.exists(raw_output_path):
-                        os.rename(raw_output_path, final_output_path)
+                        os.replace(raw_output_path, final_output_path)
             else:
                 print(f"[!] Không tìm thấy nhạc nền tại: {bgm_path}")
                 if os.path.exists(raw_output_path):
-                    os.rename(raw_output_path, final_output_path)
+                    os.replace(raw_output_path, final_output_path)
         else:
             if os.path.exists(raw_output_path):
-                os.rename(raw_output_path, final_output_path)
+                os.replace(raw_output_path, final_output_path)
 
         # Trả về file đã tạo
         if os.path.exists(final_output_path) and os.path.getsize(final_output_path) > 0:
@@ -289,6 +320,47 @@ async def generate_tts(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/generate-script")
+async def generate_script(request: GenerateRequest):
+    global llm_engine
+    if not os.path.exists(LLM_MODEL_PATH):
+        error_msg = f"Thiếu file {os.path.basename(LLM_MODEL_PATH)} tại {os.path.dirname(LLM_MODEL_PATH)}. " \
+                    "Vui lòng chạy 'python setup_llm.py' để tải mô hình."
+        return {"success": False, "error": error_msg}
+
+    try:
+        if llm_engine is None:
+            print("[*] Đang nạp Động cơ Tham mưu LLM (Chế độ tối ưu CPU)...")
+            # CẤU HÌNH SINH TỬ CHO MÁY YẾU:
+            # n_gpu_layers=0: Bắt buộc chạy 100% bằng CPU
+            # n_threads=4: Giới hạn dùng 4 luồng CPU để máy không bị đơ
+            # n_ctx=1024: Giảm bộ nhớ ngữ cảnh xuống để tiết kiệm RAM
+            llm_engine = Llama(
+                model_path=LLM_MODEL_PATH, 
+                n_ctx=1024, 
+                n_threads=4, 
+                n_gpu_layers=0, 
+                verbose=False
+            )
+            
+        print(f"[*] AI đang phân tích yêu cầu: {request.prompt}")
+        system_prompt = "Bạn là một sĩ quan tham mưu, trợ lý biên tập chuyên nghiệp. Hãy viết văn bản bằng tiếng Việt, ngắn gọn, súc tích, văn phong nghiêm túc."
+        
+        response = llm_engine.create_chat_completion(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": request.prompt}
+            ],
+            max_tokens=600,
+            temperature=0.7,
+        )
+        
+        generated_text = response['choices'][0]['message']['content']
+        return {"success": True, "text": generated_text}
+    except Exception as e:
+        print(f"[-] Lỗi Động cơ LLM: {e}")
+        return {"success": False, "error": str(e)}
 
 if __name__ == "__main__":
     # Khởi động trạm chỉ huy tại cổng 8000

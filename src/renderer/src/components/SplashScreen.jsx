@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
-import { Disc, Cpu, Database, Network, Loader2, Info, Terminal } from 'lucide-react'
+import { Disc, Loader2, Info, Terminal } from 'lucide-react'
 
 const tips = [
   "STRATEGY: Clear transcripts yield 99% accuracy in neural voice cloning.",
   "DHSYSTEM: Numeric data and dates are automatically normalized by the core.",
-  "GGUF_ENGINE: CPU-optimized inference active. No high-end GPU required.",
+  "DHS-ALPHA: CPU-optimized inference active. No high-end GPU required.",
   "INPUT_TIP: High-fidelity reference audio ensures superior voice matching.",
   "SECURITY: All processing occurs on local hardware. Offline mode enabled.",
   "PROTOCOL: Naming convention [Name]_[Region] is recommended for voice assets."
@@ -23,7 +23,7 @@ const SplashScreen = ({ onReady }) => {
   useEffect(() => {
     const systemLogs = [
       "[INFO] Loading Neural Weights into RAM...",
-      "[SYSTEM] CPU Quantization: Q4_K_M Active.",
+      "[SYSTEM] Neural Quantization: Sigma_Active.",
       "[CORE] Memory isolation protocol established.",
       "[NET] Local API binding to :8000...",
       "[AUTH] DHSYSTEM encrypted handshake complete."

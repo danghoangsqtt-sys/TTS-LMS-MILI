@@ -7,8 +7,7 @@ import {
     AlertCircle, 
     CheckCircle2, 
     Loader2, 
-    Volume2,
-    Terminal
+    Volume2
 } from 'lucide-react'
 
 export default function LexiconManager() {
@@ -92,160 +91,178 @@ export default function LexiconManager() {
     : (entries || [])
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Toast */}
+    <div className="space-y-6 animate-in fade-in duration-500 bg-[#f8fafc] p-8 rounded-3xl min-h-screen">
+      {/* Header section with Stats */}
+      <div className="flex justify-between items-center mb-2">
+        <div>
+          <h2 className="text-2xl font-black text-[#1e293b] tracking-tight">Từ Điển Quân Sự</h2>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-1">Hệ thống chuẩn hóa phát âm SQTT.AI</p>
+        </div>
+        <div className="flex items-center gap-6">
+           <div className="text-right">
+              <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tổng số mục</span>
+              <span className="text-lg font-black text-emerald-600">{entries?.length || 0}</span>
+           </div>
+           <div className="h-8 w-[1px] bg-gray-200" />
+           {saving && (
+              <div className="flex items-center gap-2 text-emerald-500 animate-pulse">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Đang đồng bộ...</span>
+              </div>
+           )}
+        </div>
+      </div>
+
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-[200] flex items-center gap-2 px-4 py-2 border shadow-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-          toast.type === 'success' ? 'bg-[#10b981] text-black border-[#10b981]' : 'bg-red-600 text-white border-red-500'
+        <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-6 py-3 rounded-2xl shadow-2xl border text-xs font-bold transition-all animate-in slide-in-from-top duration-300 ${
+          toast.type === 'success' ? 'bg-white text-emerald-600 border-emerald-100' : 'bg-white text-red-600 border-red-100'
         }`}>
-          {toast.type === 'success' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+          {toast.type === 'success' ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
           {toast.message}
         </div>
       )}
 
-      {/* Add Row + Voice Selector */}
-      <div className="bg-[#050505] border border-white/5 p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none opacity-[0.03]">
-            <div className="absolute top-0 left-0 w-full h-[1px] bg-[#10b981] animate-scanline" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end relative z-10">
-          <div className="md:col-span-3">
-            <label className="block text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-2 px-1">KÝ_HIỆU_MÃ</label>
+      {/* Input Section - Refined Card Style */}
+      <div className="bg-white border border-gray-100 p-8 rounded-[32px] shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-end">
+          <div className="md:col-span-3 space-y-2">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Ký hiệu / Viết tắt</label>
             <input 
               type="text" 
               value={shortInput} 
               onChange={(e) => setShortInput(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               placeholder="VD: BQP" 
-              className="w-full bg-black border border-white/10 rounded-none px-4 py-2.5 text-[12px] font-bold text-white focus:border-[#10b981]/50 outline-none placeholder:text-white/10 uppercase tracking-widest transition-all"
+              className="w-full bg-[#f1f5f9] border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl px-5 py-3.5 text-sm font-bold text-[#1e293b] outline-none placeholder:text-gray-300 transition-all uppercase tracking-widest"
             />
           </div>
-          <div className="md:col-span-5">
-            <label className="block text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-2 px-1">ĐỊNH_NGHĨA_PHÁT_ÂM</label>
+          <div className="md:col-span-5 space-y-2">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Định nghĩa phát âm đầy đủ</label>
             <input 
               type="text" 
               value={fullInput} 
               onChange={(e) => setFullInput(e.target.value)} 
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               placeholder="VD: BỘ QUỐC PHÒNG" 
-              className="w-full bg-black border border-white/10 rounded-none px-4 py-2.5 text-[12px] font-bold text-white focus:border-[#10b981]/50 outline-none placeholder:text-white/10 uppercase tracking-widest transition-all"
+              className="w-full bg-[#f1f5f9] border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl px-5 py-3.5 text-sm font-bold text-[#1e293b] outline-none placeholder:text-gray-300 transition-all uppercase tracking-widest"
             />
           </div>
-          <div className="md:col-span-3">
-            <label className="block text-[9px] font-black text-white/30 uppercase tracking-[0.2em] mb-2 px-1 flex items-center gap-2">
-              <Volume2 className="h-3 w-3 text-[#10b981]" /> MODULE_DIỄN_ĐỌC
+          <div className="md:col-span-3 space-y-2">
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1 flex items-center gap-2">
+               Giọng đọc thử
             </label>
-            <select 
-              value={previewVoice} 
-              onChange={(e) => setPreviewVoice(e.target.value)}
-              className="w-full bg-black border border-white/10 rounded-none px-3 py-2.5 text-[11px] text-white/60 focus:border-[#10b981]/50 outline-none font-bold uppercase tracking-widest appearance-none cursor-pointer"
-            >
-              {models?.map((m) => (
-                <option key={m} value={m} className="bg-[#050505]">
-                  {m.replace('.onnx', '').replace(/-/g, ' ').toUpperCase()}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select 
+                value={previewVoice} 
+                onChange={(e) => setPreviewVoice(e.target.value)}
+                className="w-full bg-[#f1f5f9] border-2 border-transparent focus:border-emerald-500 focus:bg-white rounded-2xl px-5 py-3.5 text-xs font-bold text-gray-600 outline-none appearance-none cursor-pointer tracking-widest"
+              >
+                {models?.map((m) => (
+                  <option key={m} value={m}>
+                    {m.replace('.onnx', '').replace(/-/g, ' ').toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                <Volume2 size={16} />
+              </div>
+            </div>
           </div>
           <div className="md:col-span-1">
             <button 
               onClick={handleAdd} 
               disabled={!shortInput.trim() || !fullInput.trim()}
-              className="w-full h-[42px] bg-[#10b981] hover:bg-[#059669] text-black rounded-none flex items-center justify-center transition-all disabled:opacity-20 active:scale-95 shadow-lg shadow-emerald-500/10"
-              title="Add to Core Database"
+              className="w-full h-[54px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl flex items-center justify-center transition-all disabled:opacity-30 disabled:grayscale shadow-lg shadow-emerald-200 active:scale-95"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-6 w-6 stroke-[3px]" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Table Database View */}
-      <div className="bg-[#050505] border border-white/5 flex flex-col overflow-hidden max-h-[550px] shadow-2xl">
-        {/* Search & Tool Bar */}
-        <div className="px-4 py-3 border-b border-white/5 flex items-center gap-4 bg-black/40">
-          <div className="relative flex-1 max-w-md">
+      {/* Main Content Area - Table Card */}
+      <div className="bg-white border border-gray-100 rounded-[32px] shadow-sm flex flex-col overflow-hidden max-h-[600px]">
+        {/* Table Search & Control Header */}
+        <div className="px-8 py-5 border-b border-gray-50 flex items-center justify-between bg-white sticky top-0 z-[20]">
+          <div className="relative w-full max-w-sm">
             <input 
               type="text" 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
-              placeholder="SEARCHING CORE_DICTIONARY..."
-              className="w-full pl-10 pr-4 py-2 bg-black/50 border border-white/5 rounded-none text-[10px] text-white focus:border-[#10b981]/30 outline-none uppercase tracking-[0.2em] placeholder:text-white/10"
+              placeholder="Tìm kiếm từ viết tắt hoặc định nghĩa..."
+              className="w-full pl-12 pr-4 py-3 bg-[#f8fafc] border-none rounded-2xl text-xs font-bold text-[#1e293b] focus:ring-2 focus:ring-emerald-500/20 outline-none placeholder:text-gray-400"
             />
-            <Search className="h-3.5 w-3.5 text-white/20 absolute left-4 top-2.5" />
+            <Search className="h-4 w-4 text-emerald-500 absolute left-4 top-1/2 -translate-y-1/2" />
           </div>
-          <div className="flex-1"></div>
-          <div className="flex items-center gap-6">
-            <span className="text-[9px] text-white/20 font-black tracking-[0.2em] uppercase">
-                {filteredEntries?.length || 0} / {entries?.length || 0} SECTOR_DATA
-            </span>
-            {saving && (
-              <span className="text-[9px] text-[#10b981] font-black flex items-center gap-2 uppercase tracking-[0.2em] animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                SYNC_CORE...
+          
+          <div className="flex items-center gap-4">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Đang hiển thị {filteredEntries?.length || 0} mục
               </span>
-            )}
-            <div className="h-4 w-[1px] bg-white/5" />
-            <Terminal size={14} className="text-[#10b981]/40" />
           </div>
         </div>
 
+        {/* Excel-style Table Body */}
         <div className="flex-1 overflow-auto custom-scrollbar">
           {loading ? (
-            <div className="flex flex-col items-center justify-center h-64 text-white/10 gap-4">
-              <Loader2 className="h-10 w-10 animate-spin opacity-20" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em]">Retrieving_Data...</span>
+            <div className="flex flex-col items-center justify-center h-80 text-gray-300 gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+              <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Đang tải cơ sở dữ liệu...</span>
             </div>
           ) : (
             <table className="w-full text-left border-collapse">
-              <thead className="bg-white/[0.02] text-white/20 font-black text-[8px] uppercase tracking-[0.3em] border-b border-white/5 sticky top-0 z-10 backdrop-blur-md">
+              <thead className="bg-[#f8fafc] text-gray-400 font-bold text-[10px] uppercase tracking-widest sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-4 w-16 text-center">HEX_ID</th>
-                  <th className="px-6 py-4 w-48">MÃ_VĂN_BẢN</th>
-                  <th className="px-6 py-4">ĐỊNH_DẠNG_PHÁT_ÂM</th>
-                  <th className="px-6 py-3 w-32 text-center">COMMANDS</th>
+                  <th className="px-8 py-4 w-20 border-b border-gray-100">ID</th>
+                  <th className="px-8 py-4 w-64 border-b border-gray-100">Mã Viết Tắt</th>
+                  <th className="px-8 py-4 border-b border-gray-100">Phát Âm Đầy Đủ</th>
+                  <th className="px-8 py-4 w-32 border-b border-gray-100 text-center">Thao Tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-gray-50">
                 {(filteredEntries?.length || 0) === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-24 text-center text-white/5 uppercase font-black tracking-[0.4em] text-[11px]">
-                      <BookOpenCheck className="h-16 w-16 opacity-10 mx-auto mb-6" />
-                      {searchTerm ? 'No Data Matching Protocol' : 'Core Dictionary Database Offline'}
+                    <td colSpan={4} className="px-8 py-32 text-center text-gray-300">
+                      <div className="flex flex-col items-center gap-4">
+                        <BookOpenCheck className="h-20 w-20 opacity-10" />
+                        <p className="text-sm font-bold uppercase tracking-widest opacity-40">Không tìm thấy dữ liệu phù hợp</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   filteredEntries.map((entry, i) => (
-                    <tr key={entry.short} className="group hover:bg-white/[0.03] transition-all">
-                      <td className="px-6 py-4 text-center text-[10px] text-white/10 font-mono tracking-tighter">
-                        {String(i + 1).padStart(3, '0')}
+                    <tr key={entry.short} className="group hover:bg-emerald-50/30 transition-all border-l-4 border-transparent hover:border-emerald-500">
+                      <td className="px-8 py-5 text-[11px] text-gray-400 font-mono">
+                        {(i + 1).toString().padStart(3, '0')}
                       </td>
-                      <td className="px-6 py-4">
-                        <span className="bg-[#10b981]/10 text-[#10b981] font-black text-[11px] px-3 py-1 border border-[#10b981]/20 font-mono tracking-widest uppercase">
+                      <td className="px-8 py-5">
+                        <span className="inline-block bg-emerald-50 text-emerald-700 font-black text-xs px-4 py-1.5 rounded-full border border-emerald-100 tracking-wider">
                           {entry.short}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-white/60 font-black text-[11px] uppercase tracking-tight">
+                      <td className="px-8 py-5 text-sm font-bold text-[#1e293b]">
                         {entry.full}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex items-center justify-center gap-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                      <td className="px-8 py-5 text-center">
+                        <div className="flex items-center justify-center gap-3">
                           <button
                             onClick={() => handlePreview(entry.full, entry.short)}
                             disabled={previewingKey === entry.short || !previewVoice}
-                            className="p-2 text-white/40 hover:text-[#10b981] hover:bg-white/5 transition-all disabled:opacity-10"
-                            title="Preview Synthesis"
+                            className={`p-2 rounded-xl transition-all ${
+                                previewingKey === entry.short 
+                                ? 'bg-emerald-100 text-emerald-600' 
+                                : 'bg-gray-50 text-gray-400 hover:bg-emerald-600 hover:text-white hover:shadow-lg hover:shadow-emerald-200'
+                            }`}
                           >
                             {previewingKey === entry.short
-                              ? <Loader2 className="h-4 w-4 animate-spin text-[#10b981]" />
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
                               : <Volume2 className="h-4 w-4" />
                             }
                           </button>
                           <button 
                             onClick={() => handleDelete(entry.short)}
-                            className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-90"
-                            title="Purge Entry"
+                            className="p-2 bg-gray-50 text-gray-300 hover:bg-red-50 hover:text-red-500 hover:shadow-lg hover:shadow-red-100 rounded-xl transition-all active:scale-95"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>

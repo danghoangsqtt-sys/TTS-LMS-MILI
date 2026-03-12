@@ -1,172 +1,278 @@
-/* eslint-disable react/prop-types */
 import { useState, useRef, useMemo, useEffect } from 'react'
-import { Play, Square, Trash2, RefreshCw, Calendar, Search, Download, FileText, Database, ShieldCheck } from 'lucide-react'
+import { 
+  Play, 
+  Square, 
+  Trash2, 
+  Search, 
+  Download, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  Database,
+  Trash,
+  ChevronRight
+} from 'lucide-react'
+import PropTypes from 'prop-types'
 
-export default function HistoryLog({ history = [], onDeleteEntry, onRebroadcast }) {
+export default function HistoryLog({ history = [], onDeleteEntry, onClearHistory, onRebroadcast }) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterDate, setFilterDate] = useState('')
   const [playingId, setPlayingId] = useState(null)
+  const [toast, setToast] = useState(null)
   const audioRef = useRef(null)
 
+  // Filter logic
   const filteredLogs = useMemo(() => {
-    let res = [...(history || [])]
-    if (searchTerm) {
-      const lower = searchTerm.toLowerCase()
-      res = res.filter((l) => l.rawText?.toLowerCase().includes(lower) || l.configSummary?.toLowerCase().includes(lower))
-    }
-    if (filterDate) res = res.filter((l) => new Date(l.timestamp).toISOString().split('T')[0] === filterDate)
-    return res
-  }, [history, searchTerm, filterDate])
+    if (!searchTerm) return [...history]
+    const lower = searchTerm.toLowerCase()
+    return history.filter((l) => 
+      l.rawText?.toLowerCase().includes(lower) || 
+      l.configSummary?.toLowerCase().includes(lower)
+    )
+  }, [history, searchTerm])
 
-  useEffect(() => { return () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null } } }, [])
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [toast])
+
+  const showToast = (message, type = 'success') => setToast({ message, type })
 
   const handlePlay = (log) => {
     if (!log.audioBlob) return
-    if (playingId === log.id) { if (audioRef.current) audioRef.current.pause(); setPlayingId(null); return }
+    
+    if (playingId === log.id) {
+      if (audioRef.current) audioRef.current.pause()
+      setPlayingId(null)
+      return
+    }
+
     if (audioRef.current) audioRef.current.pause()
+    
     try {
       const audio = new Audio(log.audioBlob)
       audioRef.current = audio
       audio.onended = () => setPlayingId(null)
       audio.play()
       setPlayingId(log.id)
-    } catch (e) { console.error('Audio play error', e) }
+    } catch (e) {
+      console.error('Audio play error', e)
+      showToast('Lỗi phát âm thanh', 'error')
+    }
   }
 
   const handleDownload = (log) => {
     if (!log.audioBlob) return
     const link = document.createElement('a')
     link.href = log.audioBlob
-    link.download = `Broadcast_${log.timestamp}.wav`
+    link.download = `LichSu_XuLy_${new Date(log.timestamp).getTime()}.wav`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    showToast('Bắt đầu tải xuống...')
+  }
+
+  const handleDelete = (id) => {
+    if (confirm('Bạn có chắc chắn muốn xóa bản ghi nhật ký này?')) {
+      onDeleteEntry(id)
+      showToast('Đã xóa bản ghi')
+    }
+  }
+
+  const handleClearAll = () => {
+    if (confirm('CẢNH BÁO: Hành động này sẽ xóa toàn bộ lịch sử xử lý. Bạn có chắc chắn?')) {
+      onClearHistory()
+      showToast('Đã dọn dẹp toàn bộ nhật ký')
+    }
   }
 
   return (
-    <div className="pro-card-xl flex flex-col max-h-[400px] overflow-hidden">
-      {/* Table Header */}
-      <div className="p-6 pb-2 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
-                <Database size={16} className="text-blue-700" />
-            </div>
-            <div>
-                <h3 className="text-sm font-bold text-gray-800 tracking-tight leading-none">Lịch sử phát thanh</h3>
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Hoạt động thời gian thực</p>
-            </div>
+    <div className="flex flex-col h-[calc(100vh-8rem)] bg-slate-50 rounded-3xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-500">
+      
+      {/* 1. STICKY HEADER & TOOLS */}
+      <div className="sticky top-0 z-30 bg-white p-8 border-b border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600 shadow-inner">
+            <Database size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight">Nhật ký Hệ thống</h2>
+            <p className="text-xs text-slate-400 font-medium">Lưu trữ lịch sử các phiên tổng hợp giọng nói và xử lý AI</p>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-3">
-             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                <input 
-                    type="text" 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                    placeholder="Tìm nhanh..."
-                    className="pl-8 pr-3 py-1.5 bg-gray-100 border-none rounded-lg text-xs text-gray-700 placeholder:text-gray-400 w-40 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all h-8"
-                />
-            </div>
-            <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
-                <input 
-                    type="date" 
-                    value={filterDate} 
-                    onChange={(e) => setFilterDate(e.target.value)}
-                    className="pl-8 pr-2 py-1.5 bg-gray-100 border-none rounded-lg text-xs text-gray-700 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all h-8"
-                />
-            </div>
+
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input 
+              type="text" 
+              placeholder="Lọc nội dung kịch bản..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-72 bg-slate-100 border-none rounded-2xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-emerald-500/10 outline-none transition-all"
+            />
+          </div>
+          
+          <button 
+            onClick={handleClearAll}
+            disabled={history.length === 0}
+            className="flex items-center gap-2 px-5 py-3 border-2 border-red-50 text-red-500 rounded-2xl text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-all disabled:opacity-20"
+          >
+            <Trash size={14} />
+            Xóa toàn bộ lịch sử
+          </button>
         </div>
       </div>
 
-      {/* Table Body */}
-      <div className="flex-1 overflow-x-auto custom-scrollbar px-6">
-        <table className="w-full text-left border-separate border-spacing-y-1">
-          <thead>
-            <tr className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-              <th className="px-4 py-3">Thời gian</th>
-              <th className="px-4 py-3">Kịch bản</th>
-              <th className="px-4 py-3">Cấu hình</th>
-              <th className="px-4 py-3 text-center">Phát</th>
-              <th className="px-4 py-3 text-right">Lệnh</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50/50">
-            {filteredLogs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-12 text-center">
-                    <div className="flex flex-col items-center opacity-10">
-                        <FileText size={32} className="text-gray-400 mb-2" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Không có dữ liệu</span>
-                    </div>
-                </td>
-              </tr>
-            ) : (
-              filteredLogs.map((log) => (
-                <tr key={log.id} className="group hover:bg-emerald-50/20 transition-all">
-                  <td className="px-4 py-3 align-middle">
-                    <div className="font-bold text-gray-700 text-xs">{new Date(log.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
-                    <div className="text-[8px] text-gray-400 font-bold uppercase">{new Date(log.timestamp).toLocaleDateString('vi-VN')}</div>
-                  </td>
-                  <td className="px-4 py-3 align-middle max-w-[300px]">
-                    <p className="text-gray-500 truncate font-medium text-xs" title={log.rawText}>
-                      {log.rawText}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 align-middle">
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider bg-emerald-50/60 px-2 py-0.5 rounded-md border border-emerald-100/50">
-                      {log.configSummary}
+      {/* 2. SCROLLABLE CONTENT AREA */}
+      <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-4">
+        {filteredLogs.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-30 mt-20">
+            <Clock size={80} className="text-slate-200 mb-4" />
+            <h4 className="text-lg font-bold text-slate-400">Chưa có dữ liệu xử lý nào được ghi nhận</h4>
+            <p className="text-sm">Mọi hoạt động tổng hợp giọng nói của bạn sẽ xuất hiện tại đây</p>
+          </div>
+        ) : (
+          filteredLogs.map((log) => (
+            <div 
+              key={log.id} 
+              className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all flex items-center gap-6 group"
+            >
+              {/* Column 1: Session Info (20%) */}
+              <div className="w-[20%] border-r border-slate-100 pr-6 space-y-3">
+                {log.audioBlob ? (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-emerald-100">
+                    <CheckCircle2 size={12} /> Hoàn tất
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 rounded-lg text-[10px] font-bold uppercase tracking-wider border border-red-100">
+                    <XCircle size={12} /> Lỗi
+                  </div>
+                )}
+                <div className="flex flex-col">
+                  <span className="text-sm font-bold text-slate-700">
+                    {new Date(log.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-bold">
+                    {new Date(log.timestamp).toLocaleDateString('vi-VN')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Column 2: Details & Content (60%) */}
+              <div className="w-[60%] px-4 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-[10px] font-bold border border-emerald-100">
+                    {log.configSummary || 'Giọng đọc chuẩn'}
+                  </span>
+                  {log.speed && (
+                    <span className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-bold border border-slate-100">
+                      Tốc độ: {log.speed}x
                     </span>
-                  </td>
-                  <td className="px-4 py-3 align-middle text-center">
-                    {log.audioBlob ? (
-                      <button 
-                        onClick={() => handlePlay(log)}
-                        className={`h-7 w-7 rounded-full flex items-center justify-center transition-all mx-auto shadow-sm active:scale-90 ${
-                          playingId === log.id 
-                            ? 'bg-emerald-600 text-white shadow-emerald-900/10' 
-                            : 'bg-white border border-gray-100 text-gray-400 hover:text-emerald-600 hover:border-emerald-200'
-                        }`}
-                      >
-                        {playingId === log.id ? <Square className="h-2.5 w-2.5 fill-current" /> : <Play className="h-2.5 w-2.5 fill-current ml-0.5" />}
-                      </button>
-                    ) : <span className="text-gray-200">—</span>}
-                  </td>
-                  <td className="px-4 py-3 align-middle text-right">
-                    <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
-                      {onRebroadcast && (
-                        <button onClick={() => onRebroadcast(log.rawText)} className="p-1.5 bg-white border border-gray-100 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shadow-sm" title="Phát lại">
-                          <RefreshCw className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                      <button onClick={() => handleDownload(log)} className="p-1.5 bg-white border border-gray-100 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors shadow-sm" title="Tải xuống">
-                        <Download className="h-3.5 w-3.5" />
-                      </button>
-                      {onDeleteEntry && (
-                        <button onClick={() => { if (confirm('Xóa bản ghi này?')) onDeleteEntry(log.id) }} className="p-1.5 bg-white border border-gray-100 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors shadow-sm" title="Xóa">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  )}
+                  {log.pitch && (
+                    <span className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-bold border border-slate-100">
+                      Cao độ: {log.pitch}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-600 leading-relaxed font-medium line-clamp-2">
+                  {log.rawText || '(Không có nội dung dữ liệu)'}
+                </p>
+              </div>
+
+              {/* Column 3: Actions (20%) */}
+              <div className="w-[20%] flex items-center justify-end gap-3 pl-6 border-l border-slate-100">
+                {log.audioBlob && (
+                  <button 
+                    onClick={() => handlePlay(log)}
+                    className={`h-11 w-11 rounded-2xl flex items-center justify-center transition-all shadow-sm active:scale-95 ${
+                      playingId === log.id 
+                        ? 'bg-emerald-600 text-white' 
+                        : 'bg-white border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-200'
+                    }`}
+                    title={playingId === log.id ? "Dừng" : "Nghe lại"}
+                  >
+                    {playingId === log.id ? <Square size={18} className="fill-current" /> : <Play size={18} className="fill-current ml-0.5" />}
+                  </button>
+                )}
+                
+                <div className="flex flex-col gap-1">
+                  <button 
+                    onClick={() => handleDownload(log)}
+                    disabled={!log.audioBlob}
+                    className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all disabled:opacity-10"
+                    title="Tải xuống"
+                  >
+                    <Download size={18} />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(log.id)}
+                    className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                    title="Xóa"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                
+                {onRebroadcast && (
+                  <button 
+                    onClick={() => onRebroadcast(log.rawText)}
+                    className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-black transition-all shadow-lg shadow-slate-200"
+                    title="Chuyển sang soạn thảo"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      {/* Footer Info */}
-      <div className="px-6 py-3 border-t border-gray-50 bg-gray-50/10 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-gray-400">
-            <ShieldCheck size={12} className="text-emerald-500" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-[#0D6241]/60">Secure Local Storage</span>
+      {/* 3. TOAST NOTIFICATION */}
+      {toast && (
+        <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-8 py-4 rounded-2xl shadow-2xl border animate-in slide-in-from-bottom duration-300 ${
+          toast.type === 'error' ? 'bg-red-600 text-white border-red-700' : 'bg-slate-900 text-white border-slate-800'
+        }`}>
+          {toast.type === 'error' ? <XCircle size={18} /> : <CheckCircle2 size={18} className="text-emerald-400" />}
+          <span className="text-xs font-bold uppercase tracking-widest">{toast.message}</span>
         </div>
-        <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">
-            {filteredLogs.length}/{history?.length || 0} SECTOR_LOG
-        </span>
-      </div>
+      )}
+
+      {/* Scoped Scrollbar Styling */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #cbd5e1;
+        }
+      `}} />
     </div>
   )
+}
+
+HistoryLog.propTypes = {
+  history: PropTypes.array,
+  onDeleteEntry: PropTypes.func.isRequired,
+  onClearHistory: PropTypes.func.isRequired,
+  onRebroadcast: PropTypes.func
 }

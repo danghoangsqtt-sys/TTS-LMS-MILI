@@ -1,5 +1,6 @@
-appId: com.electron.mb-tts
+appId: com.sqtt.mbtts
 productName: MB-TTS
+compression: store
 directories:
   buildResources: build
 files:
@@ -20,12 +21,11 @@ extraResources:
 asarUnpack:
   - resources/**
 win:
+  icon: build/icon.ico
   executableName: MB-TTS
-nsis:
-  artifactName: ${name}-${version}-setup.${ext}
-  shortcutName: ${productName}
-  uninstallDisplayName: ${productName}
-  createDesktopShortcut: always
+  target:
+    - target: dir
+    - target: zip
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
