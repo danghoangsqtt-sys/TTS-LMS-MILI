@@ -11,6 +11,7 @@ import uvicorn
 import io
 import json
 from pydub import AudioSegment
+import soundfile as sf
 
 from fastapi import FastAPI, Form, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
@@ -141,6 +142,16 @@ async def add_voice(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/voices/{voice_id}/sample")
+async def get_voice_sample(voice_id: str):
+    """
+    Phục vụ file âm thanh mẫu (.wav) của voice_id để nghe thử.
+    """
+    sample_path = os.path.join(VOICE_BANK_DIR, f"{voice_id}.wav")
+    if os.path.exists(sample_path):
+        return FileResponse(sample_path, media_type="audio/wav")
+    raise HTTPException(status_code=404, detail="Không tìm thấy file mẫu cho giọng này.")
+
 @app.post("/api/tts")
 async def generate_tts(
     voice_id: str = Form(...),
@@ -171,57 +182,113 @@ async def generate_tts(
         os.makedirs(output_dir, exist_ok=True)
         final_output_path = os.path.join(output_dir, f"tts_{voice_id}.wav")
     
+    import shutil
+    import tempfile
+
     try:
-        print("[*] Đang xuất audio từ AI...")
-        audio, sr, *_ = tts.infer(text, ref_audio=ref_audio_path, ref_text=ref_text_content)
+        print(f"[*] Khởi chạy engine TTS cho văn bản: {text[:50]}...")
         
+        # FIX: Unicode Pathing - Copy file mẫu ra path tạm không dấu để tránh lỗi engine
+        temp_dir = tempfile.gettempdir()
+        temp_ref_audio = os.path.join(temp_dir, f"ref_{int(time.time())}.wav")
+        print(f"[*] Copying ref audio to temp path: {temp_ref_audio}")
+        shutil.copy2(ref_audio_path, temp_ref_audio)
+
+        print("[*] Đang xuất audio từ AI...")
+        
+        # Lấy dữ liệu âm thanh từ AI - Handle both tuple and direct audio array
+        result = tts.infer(text, ref_audio=temp_ref_audio, ref_text=ref_text_content)
+        if isinstance(result, tuple):
+            audio, sr = result[0], result[1]
+        else:
+            audio, sr = result, 24000 # Default to 24k if not returned
+            
+        # Log Shape để kiểm tra dữ liệu thô
+        try:
+            if hasattr(audio, 'shape'):
+                print(f"[DEBUG] Shape của audio: {audio.shape}")
+                if len(audio.shape) > 0 and audio.shape[0] == 0:
+                    print("[!] CẢNH BÁO: Audio tensor trả về rỗng (0 shape)!")
+            else:
+                print(f"[DEBUG] Audio type: {type(audio)}")
+        except Exception as shape_err:
+            print(f"[!] Lỗi khi kiểm tra shape: {shape_err}")
+
         # 1. Lưu tạm file giọng đọc gốc (chưa mix)
         raw_output_path = final_output_path.replace(".wav", "_raw.wav")
-        tts.save_audio(audio, sr, raw_output_path)
+        print(f"[*] Saving raw audio to: {raw_output_path}")
+        
+        # Use soundfile instead of non-existent tts.save_audio
+        sf.write(raw_output_path, audio, sr)
+        
+        # Kiểm tra kích thước file sau khi save
+        if os.path.exists(raw_output_path):
+            raw_size = os.path.getsize(raw_output_path)
+            print(f"[DEBUG] Kích thước file Raw: {raw_size} bytes")
+            if raw_size < 100:
+                print("[!] CẢNH BÁO: File Raw quá nhỏ, có thể bị lỗi ghi file hoặc file câm.")
+        else:
+            print("[!] LỖI: Không tìm thấy file Raw sau khi sf.write()")
+
+        # Cleanup temp ref audio
+        if os.path.exists(temp_ref_audio):
+            os.remove(temp_ref_audio)
 
         # 2. Xử lý Trộn âm (Mixing) nếu có chọn nhạc nền
-        if bgm and bgm != "none" and bgm.endswith(".wav"):
+        if bgm and bgm != "none" and bgm.endswith((".wav", ".mp3")):
             bgm_path = os.path.join(BGM_DIR, bgm)
             if os.path.exists(bgm_path):
                 print(f"[*] Đang trộn âm với nhạc nền: {bgm}")
                 try:
-                    # Đọc 2 file âm thanh
-                    voice_audio = AudioSegment.from_wav(raw_output_path)
-                    bgm_audio = AudioSegment.from_wav(bgm_path)
+                    # Đọc file giọng đọc
+                    voice_audio = AudioSegment.from_file(raw_output_path)
+                    print(f"[DEBUG] Voice Audio Duration: {len(voice_audio)}ms")
+                    
+                    # Đọc file nhạc nền
+                    bgm_audio = AudioSegment.from_file(bgm_path)
+                    print(f"[DEBUG] BGM Audio Duration: {len(bgm_audio)}ms")
 
-                    # Giảm âm lượng nhạc nền xuống 15 dB (có thể chỉnh số này nếu muốn to/nhỏ hơn)
+                    # Giảm âm lượng nhạc nền
                     bgm_audio = bgm_audio - 15
 
-                    # Xử lý độ dài: Nếu nhạc nền ngắn hơn giọng đọc -> Lặp lại nhạc nền
                     if len(bgm_audio) < len(voice_audio):
                         loop_count = (len(voice_audio) // len(bgm_audio)) + 1
                         bgm_audio = bgm_audio * loop_count
                     
-                    # Cắt nhạc nền cho khớp chính xác đến từng mili-giây với giọng đọc
                     bgm_audio = bgm_audio[:len(voice_audio)]
-
-                    # Lồng ghép (Overlay) giọng đọc lên trên nhạc nền
                     mixed_audio = voice_audio.overlay(bgm_audio)
 
-                    # Xuất ra file cuối cùng
+                    print(f"[*] Exporting mixed audio to: {final_output_path}")
                     mixed_audio.export(final_output_path, format="wav")
                     
-                    # Xóa file tạm gốc cho sạch sẽ
+                    mixed_size = os.path.getsize(final_output_path)
+                    print(f"[DEBUG] Kích thước file Mixed: {mixed_size} bytes")
+                    
                     os.remove(raw_output_path)
                     print("[+] Trộn âm thành công!")
                 except Exception as mix_err:
-                    print(f"[-] Lỗi khi trộn âm (Bỏ qua BGM): {mix_err}")
-                    # Nếu lỗi mix, tự động dùng luôn bản giọng đọc gốc để không bị gián đoạn
-                    os.rename(raw_output_path, final_output_path)
+                    print(f"[-] Lỗi khi trộn âm (Dùng bản Raw): {mix_err}")
+                    if os.path.exists(raw_output_path):
+                        os.rename(raw_output_path, final_output_path)
             else:
-                os.rename(raw_output_path, final_output_path)
+                print(f"[!] Không tìm thấy nhạc nền tại: {bgm_path}")
+                if os.path.exists(raw_output_path):
+                    os.rename(raw_output_path, final_output_path)
         else:
-            # Nếu không chọn BGM, đổi tên file tạm thành file chính thức
-            os.rename(raw_output_path, final_output_path)
+            if os.path.exists(raw_output_path):
+                os.rename(raw_output_path, final_output_path)
+
+        # Trả về file đã tạo
+        if os.path.exists(final_output_path) and os.path.getsize(final_output_path) > 0:
+            return FileResponse(final_output_path, media_type="audio/wav")
+        else:
+            raise Exception("File đầu ra không hợp lệ hoặc 0-byte.")
 
     except Exception as e:
-        print(f"[-] Lỗi lõi AI: {e}")
-        return {"success": False, "error": str(e)}
+        print(f"[-] LỖI CRITICAL tại Generate TTS: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     # Khởi động trạm chỉ huy tại cổng 8000

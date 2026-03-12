@@ -2,11 +2,11 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Play,
+  Square,
   Trash2,
   Loader2,
   FileText,
   Microchip,
-  Volume2,
   Zap,
   Info,
   ChevronDown,
@@ -14,9 +14,12 @@ import {
   Settings2,
   AlertTriangle,
   X,
-  Save,
   CheckCircle2,
-  FolderOpen
+  Download,
+  RotateCcw,
+  History,
+  FolderOpen,
+  Volume2
 } from 'lucide-react'
 
 // --- Prosody Modal Component ---
@@ -100,7 +103,6 @@ export default function TTSConverter({
   externalText, 
   cachedVoices = [], 
   voicesLoading = false,
-  workspacePath = '',
   prosodyConfig,
   setProsodyConfig
 }) {
@@ -118,7 +120,13 @@ export default function TTSConverter({
   const [pitch, setPitch] = useState(1.0)
   const [bgmList, setBgmList] = useState([])
   const [selectedBgm, setSelectedBgm] = useState('')
+  const [workspacePath, setWorkspacePath] = useState('')
   const [isProsodyOpen, setIsProsodyOpen] = useState(false)
+  const [sessionHistory, setSessionHistory] = useState([])
+
+  // Preview States
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false)
+  const previewAudioRef = useRef(null)
 
   // --- Refs ---
   const audioRef = useRef(null)
@@ -129,6 +137,63 @@ export default function TTSConverter({
       setSelectedVoice(cachedVoices[0].id)
     }
   }, [cachedVoices])
+
+  // --- Handle Playing Sample ---
+  const handlePlaySample = () => {
+    if (isPreviewPlaying) {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause()
+        previewAudioRef.current.currentTime = 0
+      }
+      setIsPreviewPlaying(false)
+      return
+    }
+
+    if (!selectedVoice) return
+
+    // Stop main audio if playing
+    stopAudio()
+
+    const sampleUrl = `http://127.0.0.1:8000/api/voices/${selectedVoice}/sample`
+    
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause()
+    }
+
+    const audio = new Audio(sampleUrl)
+    previewAudioRef.current = audio
+
+    audio.onplay = () => setIsPreviewPlaying(true)
+    audio.onended = () => setIsPreviewPlaying(false)
+    audio.onerror = () => {
+      setIsPreviewPlaying(false)
+      setErrorMsg("Không thể phát giọng mẫu. Vui lòng kiểm tra lại backend.")
+    }
+
+    audio.play().catch(err => {
+      console.error("Playback error:", err)
+      setIsPreviewPlaying(false)
+    })
+  }
+
+  // --- Memory Cleanup ---
+  useEffect(() => {
+    return () => {
+      if (audioUrl) URL.revokeObjectURL(audioUrl)
+      sessionHistory.forEach(item => {
+        if (item.audioBlob) URL.revokeObjectURL(item.audioBlob)
+      })
+    }
+  }, [audioUrl, sessionHistory])
+
+  // Stop preview if selected voice changes
+  useEffect(() => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause()
+      previewAudioRef.current.currentTime = 0
+    }
+    setIsPreviewPlaying(false)
+  }, [selectedVoice])
 
   // --- Fetch BGM List ---
   useEffect(() => {
@@ -198,18 +263,29 @@ export default function TTSConverter({
       }
 
       const blob = await response.blob()
+      console.log(`[TTS] Blob nhận được: ${blob.size} bytes, Type: ${blob.type}`)
+      
+      if (blob.size < 100) {
+        throw new Error("Dữ liệu âm thanh nhận được quá nhỏ (có thể là file lỗi)")
+      }
+
       const url = URL.createObjectURL(blob)
       setAudioUrl(url)
-      setSuccessMsg(`Đã tạo âm thanh thành công tại: ${workspacePath || 'Thư mục mặc định'}`)
+      
+      const newHistoryItem = {
+        id: Date.now(),
+        timestamp: new Date().toLocaleTimeString('vi-VN'),
+        rawText: text,
+        configSummary: `${selectedVoice} (${speed}x${selectedBgm ? ' + BGM' : ''})`,
+        audioBlob: url,
+        voiceName: cachedVoices.find(v => v.id === selectedVoice)?.name || selectedVoice
+      }
+
+      setSessionHistory(prev => [newHistoryItem, ...prev].slice(0, 20))
+      setSuccessMsg(`Tín hiệu đã sẵn sàng. Sẵn sàng phát sóng!`)
 
       if (onConversionComplete) {
-        onConversionComplete({
-          id: Date.now(),
-          timestamp: new Date().toISOString(),
-          rawText: text,
-          configSummary: `${selectedVoice} (${speed}x${selectedBgm ? ' + BGM' : ''})`,
-          audioBlob: url
-        })
+        onConversionComplete(newHistoryItem)
       }
     } catch (err) {
       console.error('TTS Error:', err)
@@ -219,9 +295,25 @@ export default function TTSConverter({
     }
   }
 
+  const handleDownload = () => {
+    if (!audioUrl) return
+    const a = document.createElement('a')
+    a.href = audioUrl
+    const fileName = `${selectedVoice.replace(/\s+/g, '_')}_Audio.wav`
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  const handleClear = () => {
+    if (audioUrl) URL.revokeObjectURL(audioUrl)
+    setAudioUrl(null)
+    setSuccessMsg(null)
+  }
+
   return (
     <div className="space-y-6">
-      {/* Prosody Modal */}
       <ProsodyModal 
         isOpen={isProsodyOpen} 
         onClose={() => setIsProsodyOpen(false)} 
@@ -229,8 +321,10 @@ export default function TTSConverter({
         setConfig={setProsodyConfig}
       />
 
-      {/* Main Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex flex-col xl:flex-row gap-6">
+        {/* Main Console Area */}
+        <div className="flex-1 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* Left Column: Script Area */}
         <div className="lg:col-span-12 xl:col-span-8 flex flex-col space-y-6">
@@ -319,9 +413,20 @@ export default function TTSConverter({
                 <div className="space-y-3">
                     <div className="flex justify-between items-center px-1">
                         <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-[0.2em]">Giọng đọc (Phòng Ban)</label>
-                        <button className="text-[9px] font-bold text-emerald-600 hover:underline uppercase tracking-widest flex items-center gap-1.5">
-                            <Zap size={10} /> Làm mới
-                        </button>
+                        <div className="flex items-center gap-4">
+                            <button 
+                                onClick={handlePlaySample}
+                                className={`text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5 transition-colors ${
+                                    isPreviewPlaying ? 'text-red-500 hover:text-red-600' : 'text-emerald-600 hover:text-emerald-700'
+                                }`}
+                            >
+                                {isPreviewPlaying ? <Square size={10} fill="currentColor" /> : <Play size={10} fill="currentColor" />}
+                                {isPreviewPlaying ? 'Dừng phát' : 'Nghe thử'}
+                            </button>
+                            <button className="text-[9px] font-bold text-emerald-600 hover:underline uppercase tracking-widest flex items-center gap-1.5">
+                                <Zap size={10} /> Làm mới
+                            </button>
+                        </div>
                     </div>
 
                     {!voicesLoading && cachedVoices.length === 0 && (
@@ -447,9 +552,107 @@ export default function TTSConverter({
                 )}
                 <span className="text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] group-hover:text-white/60">Execute Synthesis Signal</span>
             </button>
-        </div>
 
+            {/* --- KẾT QUẢ TRUYỀN THÔNG (Output Results) --- */}
+            {audioUrl && (
+              <div className="pro-card-xl p-6 bg-emerald-50/20 border-emerald-100 flex flex-col items-center space-y-6 animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center gap-3 w-full">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center">
+                          <Volume2 size={16} className="text-white" />
+                      </div>
+                      <div>
+                          <h4 className="text-sm font-black text-gray-800 uppercase tracking-tighter">KẾT QUẢ TRUYỀN THÔNG</h4>
+                          <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Synthesis Output Ready</p>
+                      </div>
+                  </div>
+
+                  <div className="w-full bg-white rounded-2xl p-4 shadow-sm border border-emerald-50">
+                      <audio 
+                        ref={audioRef}
+                        src={audioUrl} 
+                        controls 
+                        className="w-full h-10 accent-emerald-600"
+                      />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 w-full">
+                      <button 
+                        onClick={handleDownload}
+                        className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-600 text-white text-[11px] font-black uppercase tracking-widest shadow-lg shadow-emerald-900/20 hover:bg-emerald-700 transition-all border-b-4 border-emerald-800 active:border-b-0 active:translate-y-1"
+                      >
+                          <Download size={16} />
+                          Lưu tệp Audio
+                      </button>
+                      <button 
+                        onClick={handleClear}
+                        className="flex items-center justify-center gap-2 py-3.5 rounded-xl bg-white border-2 border-red-50 text-red-400 text-[11px] font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 transition-all"
+                      >
+                          <RotateCcw size={16} />
+                          Hủy / Tạo lại
+                      </button>
+                  </div>
+              </div>
+            )}
+        </div>
       </div>
     </div>
+
+    {/* --- Right Sidebar: Mini History --- */}
+    <div className="xl:w-80 flex flex-col space-y-6">
+        <div className="pro-card-xl p-6 flex-1 flex flex-col min-h-[600px]">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <History size={16} className="text-gray-600" />
+                </div>
+                <div>
+                    <h4 className="text-sm font-black text-gray-800 uppercase tracking-tighter">PHIÊN LÀM VIỆC</h4>
+                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">Recent Generations</p>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-2">
+                {sessionHistory.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 opacity-30">
+                        <History size={40} className="text-gray-300" />
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Chưa có dữ liệu phiên</p>
+                    </div>
+                ) : (
+                    sessionHistory.map((item) => (
+                        <div key={item.id} className="p-4 rounded-2xl bg-gray-50/50 border border-gray-100 hover:border-emerald-100 transition-all group">
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">{item.timestamp}</span>
+                                <button 
+                                    onClick={() => {
+                                      setAudioUrl(item.audioBlob)
+                                      setText(item.rawText)
+                                    }}
+                                    className="p-1.5 rounded-lg bg-white shadow-sm border border-gray-100 text-gray-400 hover:text-emerald-600 transition-all"
+                                >
+                                    <Play size={10} fill="currentColor" />
+                                </button>
+                            </div>
+                            <h5 className="text-[11px] font-bold text-gray-700 leading-tight mb-1 truncate">{item.voiceName}</h5>
+                            <p className="text-[10px] text-gray-400 font-medium line-clamp-2 italic">"{item.rawText}"</p>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-between">
+                <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">Max 20 Items</span>
+                <button 
+                  onClick={() => {
+                    sessionHistory.forEach(h => URL.revokeObjectURL(h.audioBlob))
+                    setSessionHistory([])
+                  }}
+                  className="text-[9px] font-bold text-red-300 hover:text-red-500 uppercase tracking-widest"
+                >
+                    Xóa tất cả
+                </button>
+            </div>
+        </div>
+    </div>
+  </div>
+</div>
   )
 }
