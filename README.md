@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" width="180" alt="SQTT.AI Logo">
+  <img src="assets/icon.png" width="180" alt="SQTT.AI Logo">
 </p>
 
 <h1 align="center">📡 SQTT.AI DESKTOP PRO</h1>
